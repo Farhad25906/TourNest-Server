@@ -1,0 +1,99 @@
+// user.prisma (or your main schema file)
+model User {
+    id                 String     @id @default(uuid())
+    email              String     @unique
+    password           String
+    role               UserRole   @default(TOURIST)
+    needPasswordChange Boolean    @default(true)
+    status             UserStatus @default(ACTIVE)
+    createdAt          DateTime   @default(now())
+    updatedAt          DateTime   @updatedAt
+
+    // Relations
+    admin            Admin?
+    host             Host?
+    tourist          Tourist?
+    bookings         Booking[]
+    blogComments     BlogComment[]
+    blogLikes        BlogLike[]
+    blogCommentLikes BlogCommentLike[]
+    payments         Payment[]
+
+    @@map("users")
+}
+
+model Admin {
+    id            String   @id @default(uuid())
+    name          String
+    email         String   @unique
+    profilePhoto  String?
+    contactNumber String?
+    isDeleted     Boolean  @default(false)
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    // Relations
+    user User @relation(fields: [email], references: [email])
+
+    @@map("admins")
+}
+
+model Host {
+    id               String   @id @default(uuid())
+    name             String
+    email            String   @unique
+    profilePhoto     String?
+    phone            String?
+    bio              String?
+    hometown         String?
+    visitedLocations String[]
+    isVerified       Boolean  @default(false)
+    isDeleted        Boolean  @default(false)
+    tourLimit        Int      @default(4)
+    currentTourCount Int      @default(0)
+    blogLimit        Int      @default(5)
+    currentBlogCount Int      @default(0)
+    subscriptionId   String?
+    stripeCustomerId String?
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @updatedAt
+
+    balance       Decimal   @default(0)
+    totalEarnings Decimal   @default(0)
+    lastPayoutAt  DateTime?
+
+    averageRating Float?
+    totalReviews  Int    @default(0)
+
+    // Relations
+    tours        Tour[]
+    blogs        Blog[]
+    user         User          @relation(fields: [email], references: [email])
+    subscription Subscription? // No @relation needed here, it's defined in Subscription model
+    reviews      Review[]
+    payouts      Payout[]
+
+    @@map("hosts")
+}
+
+model Tourist {
+    id               String   @id @default(uuid())
+    email            String   @unique
+    name             String
+    profilePhoto     String?
+    bio              String?
+    interests        String?
+    location         String?
+    visitedCountries String?
+    isDeleted        Boolean  @default(false)
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @updatedAt
+    totalSpent       Decimal  @default(0)
+
+    // Relations
+    bookings Booking[]
+    user     User      @relation(fields: [email], references: [email])
+    reviews  Review[]
+
+    @@map("tourists")
+}

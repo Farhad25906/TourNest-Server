@@ -1,0 +1,38 @@
+// Travel & Tour Models
+model Tour {
+  id               String          @id @default(uuid())
+  title            String
+  description      String
+  destination      String
+  city             String
+  country          String
+  startDate        DateTime
+  endDate          DateTime
+  duration         Int
+  price            Float
+  maxGroupSize     Int
+  currentGroupSize Int             @default(0)
+  category         TourCategory
+  difficulty       DifficultyLevel
+  included         String[]
+  excluded         String[]
+  itinerary        Json
+  meetingPoint     String
+  images           String[]
+  isActive         Boolean         @default(true)
+  isFeatured       Boolean         @default(false)
+  views            Int             @default(0)
+  hostId           String
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  bookings         Booking[]
+  blogs            Blog[]
+  totalEarnings    Decimal         @default(0)
+  averageRating    Float?
+  totalReviews     Int             @default(0)
+
+  host    Host     @relation(fields: [hostId], references: [id])
+  reviews Review[]
+
+  @@map("tours")
+}

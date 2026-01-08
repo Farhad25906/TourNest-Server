@@ -1,0 +1,54 @@
+meta {
+  name: Create Tour
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{url}}/tour/create-tour
+  body: multipartForm
+  auth: inherit
+}
+
+headers {
+  Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRvY3RvcjVAZ21haWwuY29tIiwicm9sZSI6IkhPU1QiLCJpYXQiOjE3NjUzMDcwOTcsImV4cCI6MTc2NTM5MzQ5N30.WjhqOPHriwWWBTOjdjNE586aZ5vxloaNrTuEbVdxD2g eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRvY3RvcjVAZ21haWwuY29tIiwicm9sZSI6IkhPU1QiLCJpYXQiOjE3NjUzMDcwOTcsImV4cCI6MTc2NTkxMTg5N30.N8htbFOMb5m0IipRc2Cuwu7Jlad3X6E5lLNcQ0HCPSE
+}
+
+body:multipart-form {
+  file: @file(/home/farhad-hossen/Downloads/tour2.png)
+  data: '''
+    {
+      "title": "Everest Ridge Expedition",
+      "description": "A thrilling 7-day high-altitude trekking experience along the Everest ridge with breathtaking Himalayan views.",
+      "destination": "Everest Region",
+      "city": "Lukla",
+      "country": "Nepal",
+      "startDate": "2026-01-10",
+      "endDate": "2026-01-17",
+      "duration": 7,
+      "price": 1099.00,
+      "maxGroupSize": 20,
+      "category": "MOUNTAIN",
+      "difficulty": "MODERATE",
+      "included": ["Accommodation", "Meals", "Professional Guide", "Porter Service"],
+      "excluded": ["Airfare", "Visa Fees", "Travel Insurance", "Trekking Gear"],
+      "itinerary": {
+        "day1": "Arrival in Lukla and trek briefing",
+        "day2": "Trek to Phakding",
+        "day3": "Trek to Namche Bazaar",
+        "day4": "Acclimatization and local exploration",
+        "day5": "Trek to Tengboche",
+        "day6": "Return trek to Lukla",
+        "day7": "Flight back and departure"
+      },
+      "meetingPoint": "Lukla Airport",
+      "isActive": true,
+      "isFeatured": true
+    }
+  '''
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

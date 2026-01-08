@@ -1,0 +1,24 @@
+meta {
+  name: get My Reviews
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/reviews/my-reviews
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: {{Host_Token}}
+}
+
+vars:pre-request {
+  Host_Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZGhvc3NlbjkwMzVAZ21haWwuY29tIiwicm9sZSI6IlRPVVJJU1QiLCJpYXQiOjE3Njc4MjcyMjcsImV4cCI6MTc2NzkxMzYyN30.y5ZpQWE6b4aCrFqR9hr2ZVjPrJ34leh1ryb24uJ7B74
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

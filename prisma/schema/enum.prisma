@@ -1,0 +1,98 @@
+// enum UserRole {
+//   ADMIN
+//   HOST
+//   USER   
+// }
+
+// enum UserStatus {
+//   ACTIVE
+//   SUSPENDED
+// }
+
+
+
+// Enums
+enum UserRole {
+  ADMIN
+  HOST
+  TOURIST
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum TourCategory {
+  ADVENTURE
+  CULTURE
+  FOOD
+  NATURE
+  RELAXATION
+  URBAN
+  BEACH
+  MOUNTAIN
+}
+
+enum DifficultyLevel {
+  EASY
+  MODERATE
+  DIFFICULT
+  EXTREME
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CARD
+  BKASH
+  NAGAD
+  BANK
+  STRIPE
+  COD
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+  PENDING      
+}
+
+enum BlogCategory {
+  TRAVEL_TIPS
+  DESTINATION_GUIDES
+  TOUR_STORIES
+  LOCAL_CULTURE
+  FOOD_EXPERIENCES
+  ADVENTURE_TALES
+}
+
+enum BlogStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// enum ReviewStatus {
+//   PENDING
+//   APPROVED
+//   REJECTED
+//   REPORTED
+// }

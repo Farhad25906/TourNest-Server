@@ -1,0 +1,30 @@
+meta {
+  name: All User
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{BASE_URL}}/user/?status=ACTIVE
+  body: none
+  auth: inherit
+}
+
+params:query {
+  status: ACTIVE
+  ~email: fahimahammed.cse@gmail.com
+  ~searchTerm: fahim
+}
+
+headers {
+  Authorization: {{ADMIN_TOKEN}}
+}
+
+vars:pre-request {
+  ADMIN_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZEBwaC5jb20iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjUzMDczNDIsImV4cCI6MTc2NTM5Mzc0Mn0.tr1yFCcgNfhWCY_atf1rbsDvt8lb5tcJ2EeIOoEE1oc eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZEBwaC5jb20iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjUzMDczNDIsImV4cCI6MTc2NTkxMjE0Mn0.CHyfn8VLGbDlxbc2lkrIXHcGIMgdvRm3Q5e218U2uSQ
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

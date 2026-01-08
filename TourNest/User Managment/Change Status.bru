@@ -1,0 +1,26 @@
+meta {
+  name: Change Status
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{BASE_URL}}/user/3fa6e9ae-56d8-4a8a-b316-dc2902f9e8c0/status
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im1lemJhMTJAcGguY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzYyMDU5MDYwLCJleHAiOjE3NjI2NjM4NjB9.aqR9clU6uq9kXC_x_Gy_-JEh5KqIHDaPAXoU780oNAY
+}
+
+body:json {
+  {
+      "status": "INACTIVE"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

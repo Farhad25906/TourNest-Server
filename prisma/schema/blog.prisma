@@ -1,0 +1,67 @@
+// Blog System
+model Blog {
+  id          String      @id @default(uuid())
+  title       String
+  content     String
+  excerpt     String?
+  coverImage  String?
+  category    BlogCategory
+  status      BlogStatus  @default(DRAFT)
+  views       Int         @default(0)
+  likesCount  Int         @default(0)
+  hostId      String
+  tourId      String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  host        Host          @relation(fields: [hostId], references: [id])
+  tour        Tour?         @relation(fields: [tourId], references: [id])
+  comments    BlogComment[]
+  likes       BlogLike[]
+
+  @@map("blogs")
+}
+model BlogComment {
+  id        String   @id @default(uuid())
+  content   String
+  authorId  String
+  blogId    String
+  parentId  String?  // For nested comments
+  isEdited  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User        @relation(fields: [authorId], references: [id])
+  blog     Blog        @relation(fields: [blogId], references: [id])
+  parent   BlogComment? @relation("BlogComment_parent", fields: [parentId], references: [id])
+  replies  BlogComment[] @relation("BlogComment_parent")
+  likes    BlogCommentLike[]
+
+  @@map("blog_comments")
+}
+
+model BlogLike {
+  id        String   @id @default(uuid())
+  userId    String
+  blogId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  blog Blog @relation(fields: [blogId], references: [id])
+
+  @@unique([userId, blogId])
+  @@map("blog_likes")
+}
+
+model BlogCommentLike {
+  id        String   @id @default(uuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  user    User        @relation(fields: [userId], references: [id])
+  comment BlogComment @relation(fields: [commentId], references: [id])
+
+  @@unique([userId, commentId])
+  @@map("blog_comment_likes")
+}

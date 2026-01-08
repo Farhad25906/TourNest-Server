@@ -1,0 +1,31 @@
+meta {
+  name: Create Tourist
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{url}}/user/create-tourist
+  body: multipartForm
+  auth: inherit
+}
+
+body:multipart-form {
+  file: @file(/home/farhad-hossen/Downloads/person1.jpg)
+  data: '''
+    {
+      "password": "123456",
+      "tourist": {
+        "email": "farhadhossen2590@gmail.com",
+        "name": "Farhad Hossen",
+        "contactNumber": "01111111111",
+        "address": "Chittagong, BD"
+      }
+    }
+  '''
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

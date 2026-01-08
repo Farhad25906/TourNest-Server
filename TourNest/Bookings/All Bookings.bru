@@ -1,0 +1,29 @@
+meta {
+  name: All Bookings
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/bookings
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~email: fahimahammed.cse@gmail.com
+  ~searchTerm: fahim
+}
+
+headers {
+  Authorization: {{ADMIN_TOKEN}}
+}
+
+vars:pre-request {
+  ADMIN_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZEBwaC5jb20iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3Njc1NjE4NzcsImV4cCI6MTc2NzY0ODI3N30.gjhfmCVA8NLFc1MKH_n9zBnvrZwqli-VJGnFnNzr8ow
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
