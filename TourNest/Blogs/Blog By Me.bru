@@ -1,0 +1,29 @@
+meta {
+  name: Blog By Me
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/blogs/me/my-blogs
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~email: fahimahammed.cse@gmail.com
+  ~searchTerm: fahim
+}
+
+headers {
+  Authorization: {{ADMIN_TOKEN}}
+}
+
+vars:pre-request {
+  ADMIN_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZGhvc3NlbjI1OTBAZ21haWwuY29tIiwicm9sZSI6IkhPU1QiLCJpYXQiOjE3Njc0NjczNzMsImV4cCI6MTc2NzU1Mzc3M30.2VBEtqztLPKPRbsx2y407KOOWmHQp_HFfu7r9TYBMb4
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

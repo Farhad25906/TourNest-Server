@@ -1,0 +1,29 @@
+meta {
+  name: Verify Payment
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{BASE_URL}}/bookings/my-bookings
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~email: fahimahammed.cse@gmail.com
+  ~searchTerm: fahim
+}
+
+headers {
+  Authorization: {{ADMIN_TOKEN}}
+}
+
+vars:pre-request {
+  ADMIN_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZGhvc3NlbjkwMzZAZ21haWwuY29tIiwicm9sZSI6IlRPVVJJU1QiLCJpYXQiOjE3Njc1NTA5MzcsImV4cCI6MTc2NzYzNzMzN30.Gyix4ruK-zX3yNHmy3vc05BqU_mS7SY9j5TmrA6nP_U
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

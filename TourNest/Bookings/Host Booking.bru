@@ -1,0 +1,24 @@
+meta {
+  name: Host Booking
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{BASE_URL}}/bookings/host/my-bookings
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: {{Host_Token}}
+}
+
+vars:pre-request {
+  Host_Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZGhvc3NlbjI1OTBAZ21haWwuY29tIiwicm9sZSI6IkhPU1QiLCJpYXQiOjE3Njc3ODY2MjMsImV4cCI6MTc2Nzg3MzAyM30.PWmG41T0e8uOasddlk_btUkWkRv41ZAuvT-6JiC-hCo
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

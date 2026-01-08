@@ -1,0 +1,29 @@
+meta {
+  name: All Subscriptions
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/subscriptions/plans
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~email: fahimahammed.cse@gmail.com
+  ~searchTerm: fahim
+}
+
+headers {
+  Authorization: {{ADMIN_TOKEN}}
+}
+
+vars:pre-request {
+  ADMIN_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZEBwaC5jb20iLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NjczODE4ODAsImV4cCI6MTc2NzQ2ODI4MH0.7seL9qrRHKnElCRbGAwD5q3105VfB8lNHvyt5FpkQ3I
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

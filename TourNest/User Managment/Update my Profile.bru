@@ -1,0 +1,40 @@
+meta {
+  name: Update my Profile
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{BASE_URL}}/users/update-my-profile
+  body: multipartForm
+  auth: inherit
+}
+
+params:query {
+  ~email: fahimahammed.cse@gmail.com
+  ~searchTerm: fahim
+}
+
+headers {
+  Authorization: {{PATIENT_TOKEN}}
+}
+
+body:multipart-form {
+  file: @file(/home/farhad-hossen/Downloads/patient1.jpg)
+  data: '''
+    {
+      "phone": "0111111111",
+      "hometown": "Khulna",
+      "bio": "I am a Host",
+    }
+  '''
+}
+
+vars:pre-request {
+  PATIENT_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZDFAZ21haWwuY29tIiwicm9sZSI6IkhPU1QiLCJpYXQiOjE3NjYzMjYzNTIsImV4cCI6MTc2NjQxMjc1Mn0.ZKNN_vW0Iilp4QyK-KyLlqESl9y2H3vJLpJnRu9p3W4
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

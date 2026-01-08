@@ -1,0 +1,32 @@
+model Payout {
+    id            String       @id @default(uuid())
+    hostId        String
+    amount        Decimal
+    currency      String       @default("USD")
+    payoutMethod  String // 'stripe', 'bank', 'paypal', etc.
+    status        PayoutStatus @default(PENDING)
+    transactionId String?      @unique
+    bankDetails   Json?
+    failureReason String?
+    processedAt   DateTime?
+    createdAt     DateTime     @default(now())
+    updatedAt     DateTime     @updatedAt
+
+    host Host @relation(fields: [hostId], references: [id])
+
+    @@map("payouts")
+}
+
+enum PayoutStatus {
+    PENDING
+    PROCESSING
+    COMPLETED
+    FAILED
+    CANCELLED
+}
+
+// Also add these fields to Host model:
+// balance        Decimal   @default(0)
+// heldBalance    Decimal   @default(0)
+// totalEarnings  Decimal   @default(0)
+// lastPayoutAt   DateTime?

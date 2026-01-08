@@ -1,0 +1,52 @@
+meta {
+  name: tour-payment
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{url}}/bookings/a10a7548-f617-4f4a-bad5-81545beb3189/initiate-payment
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZGhvc3NlbjkwMzZAZ21haWwuY29tIiwicm9sZSI6IlRPVVJJU1QiLCJpYXQiOjE3Njc1MjU1OTcsImV4cCI6MTc2NzYxMTk5N30.sYTsDnf-HhjhMKPkC8hTRjI5--PPB3420e36GgUviv4
+}
+
+body:json {
+  {
+    "tourId": "99aa9311-8be6-493c-b0df-e18129f20ddb",
+    "numberOfPeople": 2,
+    "totalAmount": 299.99,
+    "specialRequests": "Vegetarian meal preference",
+    "paymentMethod": "STRIPE"
+  }
+}
+
+body:multipart-form {
+  file: @file()
+  data: '''
+    {
+        "password": "123456",
+        "doctor": {
+            "email": "doctor5@gmail.com",
+            "name": "Dr. Shafia",
+            "contactNumber": "+1234567890",
+            "address": "123 Medical Street, Cityville",
+            "registrationNumber": "12345",
+            "experience": 5,
+            "gender": "MALE",
+            "appointmentFee": 100,
+            "qualification": "MD, PhD",
+            "currentWorkingPlace": "City Hospital",
+            "designation": "Senior Consultant"
+        }
+    }
+  '''
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

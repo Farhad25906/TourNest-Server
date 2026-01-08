@@ -1,0 +1,33 @@
+meta {
+  name: Create Blog
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{url}}/blogs
+  body: multipartForm
+  auth: inherit
+}
+
+headers {
+  Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImZhcmhhZGhvc3NlbjI1OTBAZ21haWwuY29tIiwicm9sZSI6IkhPU1QiLCJpYXQiOjE3Njc0NjczNzMsImV4cCI6MTc2NzU1Mzc3M30.2VBEtqztLPKPRbsx2y407KOOWmHQp_HFfu7r9TYBMb4
+}
+
+body:multipart-form {
+  file: @file(/home/farhad-hossen/Downloads/tour2.png)
+  data: '''
+    {
+      "title": "Solo Travel Tips for Beginners",
+      "content": "Solo travel can be intimidating but incredibly rewarding...",
+      "excerpt": "Essential tips for first-time solo travelers",
+      "category": "TRAVEL_TIPS",
+      "status": "PUBLISHED"
+    }
+  '''
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
