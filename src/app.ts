@@ -17,7 +17,7 @@ app.post(
 );
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://tournest-server.onrender.com",
     credentials: true,
   })
 );
