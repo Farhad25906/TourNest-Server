@@ -174,7 +174,7 @@ const initiateBookingPayment = catchAsync(
     // This returns { paymentUrl, sessionId, paymentId }
     const result = await BookingService.initiateBookingPayment(id, userEmail);
 
-    console.log("From Booking Controller:", result);
+    // console.log("From Booking Controller:", result);
     
     if (!result) {
       throw new ApiError(
