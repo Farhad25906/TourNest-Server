@@ -12,12 +12,13 @@ const app: Application = express();
 
 app.post(
   "/webhook",
-  express.raw({ type: "application/json" }), // important for signature verification
+  express.raw({ type: "application/json" }), 
   PaymentController.handleStripeWebhookEvent
 );
 app.use(
   cors({
     origin: "https://tournest-server.onrender.com",
+    // origin: "http://localhost:3000",
     credentials: true,
   })
 );
