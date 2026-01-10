@@ -1,12 +1,7 @@
 // review.service.ts
 import { Request } from "express";
-import { Prisma } from "@prisma/client";
 import { prisma } from "../../shared/prisma";
-import { IOptions, paginationHelper } from "../../helper/paginationHelper";
-import {
-  reviewSearchableFields,
-  reviewPopulateFields,
-} from "./review.constant";
+import { reviewPopulateFields } from "./review.constant";
 import { IJWTPayload } from "../../types/common";
 import ApiError from "../../errors/ApiError";
 import { StatusCodes } from "http-status-codes";
@@ -70,253 +65,94 @@ const createReview = async (req: Request): Promise<any> => {
     );
   }
 
-  // SIMPLE TRANSACTION - only essential writes
-  const review = await prisma.$transaction(async (tx) => {
-    // 1. Create review
-    const newReview = await tx.review.create({
-      data: {
-        bookingId,
-        rating,
-        comment,
-        hostId: booking.tour.hostId,
-        touristId: booking.tour.id,
-        tourId: booking.tourId,
-      },
-      include: {
-        ...reviewPopulateFields,
-      },
-    });
-
-    // 2. Update booking
-    await tx.booking.update({
-      where: { id: bookingId },
-      data: {
-        isReviewed: true,
-      },
-    });
-
-    return newReview;
-  }, {
-    timeout: 8000, // 8 seconds should be plenty
-  });
-
-  // Update ratings separately (not in transaction)
-  try {
-    // Calculate and update tour rating
-    const tourStats = await prisma.review.aggregate({
-      where: {
-        tourId: booking.tourId,
-        isApproved: true,
-        isDeleted: false,
-      },
-      _avg: { rating: true },
-      _count: { rating: true },
-    });
-
-    await prisma.tour.update({
-      where: { id: booking.tourId },
-      data: {
-        averageRating: tourStats._avg.rating || 0,
-        totalReviews: tourStats._count.rating,
-      },
-    });
-
-    // Calculate and update host rating
-    const hostStats = await prisma.review.aggregate({
-      where: {
-        hostId: booking.tour.hostId,
-        isApproved: true,
-        isDeleted: false,
-      },
-      _avg: { rating: true },
-      _count: { rating: true },
-    });
-
-    await prisma.host.update({
-      where: { id: booking.tour.hostId },
-      data: {
-        averageRating: hostStats._avg.rating || 0,
-        totalReviews: hostStats._count.rating,
-      },
-    });
-  } catch (error) {
-    console.error('Failed to update ratings:', error);
-    // Don't fail the review creation if rating updates fail
-    // Can implement retry logic here
-  }
-
-  return review;
-};
-
-const updateTourRating = async (
-  tx: Prisma.TransactionClient,
-  tourId: string
-) => {
-  const reviews = await tx.review.findMany({
-    where: {
-      tourId,
-      isApproved: true,
-      isDeleted: false,
-    },
-    select: {
-      rating: true,
-    },
-  });
-
-  if (reviews.length > 0) {
-    const averageRating =
-      reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
-
-    await tx.tour.update({
-      where: { id: tourId },
-      data: {
-        averageRating: averageRating,
-        totalReviews: reviews.length,
-      },
-    });
-  }
-};
-
-const updateHostRating = async (
-  tx: Prisma.TransactionClient,
-  hostId: string
-) => {
-  const reviews = await tx.review.findMany({
-    where: {
-      hostId,
-      isApproved: true,
-      isDeleted: false,
-    },
-    select: {
-      rating: true,
-    },
-  });
-
-  if (reviews.length > 0) {
-    const averageRating =
-      reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
-
-    await tx.host.update({
-      where: { id: hostId },
-      data: {
-        averageRating: averageRating,
-        totalReviews: reviews.length,
-      },
-    });
-  }
-};
-
-const getAllReviews = async (params: any, options: IOptions) => {
-  const { page, limit, skip, sortBy, sortOrder } =
-    paginationHelper.calculatePagination(options);
-  const { searchTerm, minRating, maxRating, ...filterData } = params;
-
-  const andConditions: Prisma.ReviewWhereInput[] = [{ isDeleted: false }];
-
-  // Search term filter
-  if (searchTerm) {
-    andConditions.push({
-      OR: [
-        {
-          comment: {
-            contains: searchTerm,
-            mode: "insensitive",
-          },
-        },
-        {
-          tourist: {
-            name: {
-              contains: searchTerm,
-              mode: "insensitive",
-            },
-          },
-        },
-      ],
-    });
-  }
-
-  // Rating range filter
-  if (minRating !== undefined || maxRating !== undefined) {
-    const ratingCondition: any = {};
-    if (minRating !== undefined) ratingCondition.gte = Number(minRating);
-    if (maxRating !== undefined) ratingCondition.lte = Number(maxRating);
-    andConditions.push({ rating: ratingCondition });
-  }
-
-  // Other filters
-  if (Object.keys(filterData).length > 0) {
-    andConditions.push({
-      AND: Object.keys(filterData).map((key) => ({
-        [key]: {
-          equals: (filterData as any)[key],
-        },
-      })),
-    });
-  }
-
-  const whereConditions: Prisma.ReviewWhereInput =
-    andConditions.length > 0 ? { AND: andConditions } : {};
-
-  const result = await prisma.review.findMany({
-    skip,
-    take: limit,
-    where: whereConditions,
-    orderBy: {
-      [sortBy]: sortOrder,
+  // Create review
+  const newReview = await prisma.review.create({
+    data: {
+      bookingId,
+      rating,
+      comment,
+      hostId: booking.tour.hostId,
+      touristId: user.tourist.id,
+      tourId: booking.tourId,
     },
     include: {
       ...reviewPopulateFields,
     },
   });
 
-  const total = await prisma.review.count({
-    where: whereConditions,
+  // Update booking
+  await prisma.booking.update({
+    where: { id: bookingId },
+    data: {
+      isReviewed: true,
+    },
   });
 
-  return {
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
+  // Update tour rating
+  const tourReviews = await prisma.review.findMany({
+    where: {
+      tourId: booking.tourId,
+      isApproved: true,
+      isDeleted: false,
     },
-    data: result,
-  };
+  });
+
+  const tourAvgRating = tourReviews.length > 0
+    ? tourReviews.reduce((sum, r) => sum + r.rating, 0) / tourReviews.length
+    : 0;
+
+  await prisma.tour.update({
+    where: { id: booking.tourId },
+    data: {
+      averageRating: tourAvgRating,
+      totalReviews: tourReviews.length,
+    },
+  });
+
+  // Update host rating
+  const hostReviews = await prisma.review.findMany({
+    where: {
+      hostId: booking.tour.hostId,
+      isApproved: true,
+      isDeleted: false,
+    },
+  });
+
+  const hostAvgRating = hostReviews.length > 0
+    ? hostReviews.reduce((sum, r) => sum + r.rating, 0) / hostReviews.length
+    : 0;
+
+  await prisma.host.update({
+    where: { id: booking.tour.hostId },
+    data: {
+      averageRating: hostAvgRating,
+      totalReviews: hostReviews.length,
+    },
+  });
+
+  return newReview;
 };
 
-const getTourReviews = async (
-  tourId: string,
-  params: any,
-  options: IOptions
-) => {
-  const { page, limit, skip, sortBy, sortOrder } =
-    paginationHelper.calculatePagination(options);
-  const { minRating, maxRating } = params;
-
-  const andConditions: Prisma.ReviewWhereInput[] = [
-    { tourId },
-    { isDeleted: false },
-    { isApproved: true },
-  ];
-
-  // Rating range filter
-  if (minRating !== undefined || maxRating !== undefined) {
-    const ratingCondition: any = {};
-    if (minRating !== undefined) ratingCondition.gte = Number(minRating);
-    if (maxRating !== undefined) ratingCondition.lte = Number(maxRating);
-    andConditions.push({ rating: ratingCondition });
-  }
-
-  const whereConditions: Prisma.ReviewWhereInput =
-    andConditions.length > 0 ? { AND: andConditions } : {};
-
-  const result = await prisma.review.findMany({
-    skip,
-    take: limit,
-    where: whereConditions,
-    orderBy: {
-      [sortBy]: sortOrder,
+const getAllReviews = async () => {
+  const reviews = await prisma.review.findMany({
+    where: { isDeleted: false },
+    orderBy: { createdAt: "desc" },
+    include: {
+      ...reviewPopulateFields,
     },
+  });
+
+  return reviews;
+};
+
+const getTourReviews = async (tourId: string) => {
+  const reviews = await prisma.review.findMany({
+    where: {
+      tourId,
+      isDeleted: false,
+      isApproved: true,
+    },
+    orderBy: { createdAt: "desc" },
     include: {
       tourist: {
         select: {
@@ -334,24 +170,11 @@ const getTourReviews = async (
     },
   });
 
-  const total = await prisma.review.count({
-    where: whereConditions,
-  });
+  // Calculate statistics
+  const averageRating = reviews.length > 0
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    : 0;
 
-  // Calculate average rating
-  const reviews = await prisma.review.findMany({
-    where: whereConditions,
-    select: {
-      rating: true,
-    },
-  });
-
-  const averageRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-      : 0;
-
-  // Calculate rating distribution
   const ratingDistribution = {
     1: reviews.filter((r) => r.rating === 1).length,
     2: reviews.filter((r) => r.rating === 2).length,
@@ -361,56 +184,23 @@ const getTourReviews = async (
   };
 
   return {
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-    data: {
-      reviews: result,
-      summary: {
-        averageRating,
-        totalReviews: total,
-        ratingDistribution,
-      },
+    reviews,
+    summary: {
+      averageRating,
+      totalReviews: reviews.length,
+      ratingDistribution,
     },
   };
 };
 
-const getHostReviews = async (
-  hostId: string,
-  params: any,
-  options: IOptions
-) => {
-  const { page, limit, skip, sortBy, sortOrder } =
-    paginationHelper.calculatePagination(options);
-  const { minRating, maxRating } = params;
-
-  const andConditions: Prisma.ReviewWhereInput[] = [
-    { hostId },
-    { isDeleted: false },
-    { isApproved: true },
-  ];
-
-  // Rating range filter
-  if (minRating !== undefined || maxRating !== undefined) {
-    const ratingCondition: any = {};
-    if (minRating !== undefined) ratingCondition.gte = Number(minRating);
-    if (maxRating !== undefined) ratingCondition.lte = Number(maxRating);
-    andConditions.push({ rating: ratingCondition });
-  }
-
-  const whereConditions: Prisma.ReviewWhereInput =
-    andConditions.length > 0 ? { AND: andConditions } : {};
-
-  const result = await prisma.review.findMany({
-    skip,
-    take: limit,
-    where: whereConditions,
-    orderBy: {
-      [sortBy]: sortOrder,
+const getHostReviews = async (hostId: string) => {
+  const reviews = await prisma.review.findMany({
+    where: {
+      hostId,
+      isDeleted: false,
+      isApproved: true,
     },
+    orderBy: { createdAt: "desc" },
     include: {
       tourist: {
         select: {
@@ -434,22 +224,10 @@ const getHostReviews = async (
     },
   });
 
-  const total = await prisma.review.count({
-    where: whereConditions,
-  });
-
-  return {
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-    data: result,
-  };
+  return reviews;
 };
 
-const getMyReviews = async (req: Request, params: any, options: IOptions) => {
+const getMyReviews = async (req: Request) => {
   const userEmail = req.user?.email;
 
   if (!userEmail) {
@@ -465,112 +243,37 @@ const getMyReviews = async (req: Request, params: any, options: IOptions) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "User not found");
   }
 
-  let touristId, hostId;
+  let whereCondition: any = { isDeleted: false };
 
   if (user.tourist) {
-    touristId = user.tourist.id;
-  }
-
-  if (user.host) {
-    hostId = user.host.id;
-  }
-
-  const { page, limit, skip, sortBy, sortOrder } =
-    paginationHelper.calculatePagination(options);
-  const { searchTerm, minRating, maxRating, ...filterData } = params;
-
-  const orConditions: Prisma.ReviewWhereInput[] = [];
-
-  if (touristId) {
-    orConditions.push({ touristId });
-  }
-
-  if (hostId) {
-    orConditions.push({ hostId });
-  }
-
-  if (orConditions.length === 0) {
+    whereCondition.touristId = user.tourist.id;
+  } else if (user.host) {
+    whereCondition.hostId = user.host.id;
+  } else {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
       "User is not a tourist or host"
     );
   }
 
-  const andConditions: Prisma.ReviewWhereInput[] = [
-    { OR: orConditions },
-    { isDeleted: false },
-  ];
-
-  // Search term filter
-  if (searchTerm) {
-    andConditions.push({
-      OR: [
-        {
-          comment: {
-            contains: searchTerm,
-            mode: "insensitive",
-          },
-        },
-        {
-          tour: {
-            title: {
-              contains: searchTerm,
-              mode: "insensitive",
-            },
-          },
-        },
-      ],
-    });
-  }
-
-  // Rating range filter
-  if (minRating !== undefined || maxRating !== undefined) {
-    const ratingCondition: any = {};
-    if (minRating !== undefined) ratingCondition.gte = Number(minRating);
-    if (maxRating !== undefined) ratingCondition.lte = Number(maxRating);
-    andConditions.push({ rating: ratingCondition });
-  }
-
-  // Other filters
-  if (Object.keys(filterData).length > 0) {
-    andConditions.push({
-      AND: Object.keys(filterData).map((key) => ({
-        [key]: {
-          equals: (filterData as any)[key],
-        },
-      })),
-    });
-  }
-
-  const whereConditions: Prisma.ReviewWhereInput =
-    andConditions.length > 0 ? { AND: andConditions } : {};
-
-  const result = await prisma.review.findMany({
-    skip,
-    take: limit,
-    where: whereConditions,
-    orderBy: {
-      [sortBy]: sortOrder,
-    },
+  const reviews = await prisma.review.findMany({
+    where: whereCondition,
+    orderBy: { createdAt: "desc" },
     include: {
-      tourist: touristId
-        ? undefined
-        : {
-            select: {
-              id: true,
-              name: true,
-              profilePhoto: true,
-            },
-          },
-      host: hostId
-        ? undefined
-        : {
-            select: {
-              id: true,
-              name: true,
-              profilePhoto: true,
-            },
-          },
+      tourist: user.tourist ? undefined : {
+        select: {
+          id: true,
+          name: true,
+          profilePhoto: true,
+        },
+      },
+      host: user.host ? undefined : {
+        select: {
+          id: true,
+          name: true,
+          profilePhoto: true,
+        },
+      },
       tour: {
         select: {
           id: true,
@@ -586,24 +289,10 @@ const getMyReviews = async (req: Request, params: any, options: IOptions) => {
     },
   });
 
-  const total = await prisma.review.count({
-    where: whereConditions,
-  });
-
-  return {
-    meta: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    },
-    data: result,
-  };
+  return reviews;
 };
 
 const getSingleReview = async (id: string) => {
-  console.log(id, "From Service");
-
   const review = await prisma.review.findUnique({
     where: { id, isDeleted: false },
     include: {
@@ -650,35 +339,59 @@ const updateReview = async (id: string, user: IJWTPayload, updateData: any) => {
     );
   }
 
-  // If admin is approving the review
-  if (updateData.isApproved === true && isAdmin) {
-    const result = await prisma.$transaction(async (tx) => {
-      const updatedReview = await tx.review.update({
-        where: { id },
-        data: updateData,
-        include: reviewPopulateFields,
-      });
-
-      // Update tour and host ratings when review is approved
-      if (updateData.isApproved) {
-        await updateTourRating(tx, review.tourId);
-        await updateHostRating(tx, review.hostId);
-      }
-
-      return updatedReview;
-    });
-
-    return result;
-  }
-
-  // Regular update (by owner)
-  const result = await prisma.review.update({
+  // Update the review
+  const updatedReview = await prisma.review.update({
     where: { id },
     data: updateData,
     include: reviewPopulateFields,
   });
 
-  return result;
+  // Update ratings if review is approved by admin
+  if (updateData.isApproved === true && isAdmin) {
+    // Update tour rating
+    const tourReviews = await prisma.review.findMany({
+      where: {
+        tourId: review.tourId,
+        isApproved: true,
+        isDeleted: false,
+      },
+    });
+
+    const tourAvgRating = tourReviews.length > 0
+      ? tourReviews.reduce((sum, r) => sum + r.rating, 0) / tourReviews.length
+      : 0;
+
+    await prisma.tour.update({
+      where: { id: review.tourId },
+      data: {
+        averageRating: tourAvgRating,
+        totalReviews: tourReviews.length,
+      },
+    });
+
+    // Update host rating
+    const hostReviews = await prisma.review.findMany({
+      where: {
+        hostId: review.hostId,
+        isApproved: true,
+        isDeleted: false,
+      },
+    });
+
+    const hostAvgRating = hostReviews.length > 0
+      ? hostReviews.reduce((sum, r) => sum + r.rating, 0) / hostReviews.length
+      : 0;
+
+    await prisma.host.update({
+      where: { id: review.hostId },
+      data: {
+        averageRating: hostAvgRating,
+        totalReviews: hostReviews.length,
+      },
+    });
+  }
+
+  return updatedReview;
 };
 
 const deleteReview = async (id: string, user: IJWTPayload) => {
@@ -713,35 +426,69 @@ const deleteReview = async (id: string, user: IJWTPayload) => {
     );
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    // Soft delete the review
-    const deletedReview = await tx.review.update({
-      where: { id },
-      data: {
-        isDeleted: true,
-      },
-    });
-
-    // Mark booking as not reviewed
-    await tx.booking.update({
-      where: { id: review.bookingId },
-      data: {
-        isReviewed: false,
-      },
-    });
-
-    // Update tour and host ratings
-    await updateTourRating(tx, review.tourId);
-    await updateHostRating(tx, review.hostId);
-
-    return deletedReview;
+  // Soft delete the review
+  await prisma.review.update({
+    where: { id },
+    data: {
+      isDeleted: true,
+    },
   });
 
-  return result;
+  // Mark booking as not reviewed
+  await prisma.booking.update({
+    where: { id: review.bookingId },
+    data: {
+      isReviewed: false,
+    },
+  });
+
+  // Update tour rating
+  const tourReviews = await prisma.review.findMany({
+    where: {
+      tourId: review.tourId,
+      isApproved: true,
+      isDeleted: false,
+    },
+  });
+
+  const tourAvgRating = tourReviews.length > 0
+    ? tourReviews.reduce((sum, r) => sum + r.rating, 0) / tourReviews.length
+    : 0;
+
+  await prisma.tour.update({
+    where: { id: review.tourId },
+    data: {
+      averageRating: tourAvgRating,
+      totalReviews: tourReviews.length,
+    },
+  });
+
+  // Update host rating
+  const hostReviews = await prisma.review.findMany({
+    where: {
+      hostId: review.hostId,
+      isApproved: true,
+      isDeleted: false,
+    },
+  });
+
+  const hostAvgRating = hostReviews.length > 0
+    ? hostReviews.reduce((sum, r) => sum + r.rating, 0) / hostReviews.length
+    : 0;
+
+  await prisma.host.update({
+    where: { id: review.hostId },
+    data: {
+      averageRating: hostAvgRating,
+      totalReviews: hostReviews.length,
+    },
+  });
+
+  return { message: "Review deleted successfully" };
 };
 
 const getReviewStats = async (hostId?: string, touristId?: string) => {
-  let whereCondition: Prisma.ReviewWhereInput = {
+  let whereCondition: any = {
     isDeleted: false,
     isApproved: true,
   };
@@ -758,34 +505,13 @@ const getReviewStats = async (hostId?: string, touristId?: string) => {
     where: whereCondition,
     select: {
       rating: true,
-      createdAt: true,
-      tour: {
-        select: {
-          title: true,
-        },
-      },
-      tourist: touristId
-        ? undefined
-        : {
-            select: {
-              name: true,
-            },
-          },
     },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 10,
   });
 
-  const totalReviews = await prisma.review.count({
-    where: whereCondition,
-  });
-
-  const averageRating =
-    reviews.length > 0
-      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-      : 0;
+  const totalReviews = reviews.length;
+  const averageRating = totalReviews > 0
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
+    : 0;
 
   const ratingDistribution = {
     1: reviews.filter((r) => r.rating === 1).length,
@@ -795,18 +521,10 @@ const getReviewStats = async (hostId?: string, touristId?: string) => {
     5: reviews.filter((r) => r.rating === 5).length,
   };
 
-  const recentReviews = reviews.map((review) => ({
-    rating: review.rating,
-    createdAt: review.createdAt,
-    tourTitle: review.tour?.title,
-    touristName: review.tourist?.name,
-  }));
-
   return {
     totalReviews,
     averageRating,
     ratingDistribution,
-    recentReviews,
   };
 };
 

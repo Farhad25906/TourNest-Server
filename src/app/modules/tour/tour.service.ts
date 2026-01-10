@@ -732,7 +732,91 @@ const getHostSingleTour = async (id: string, req: Request) => {
     bookingStats,
   };
 };
+const completeTour = async (id: string, req: Request): Promise<Tour> => {
+  const tour = await prisma.tour.findUnique({
+    where: { id },
+    include: {
+      bookings: {
+        where: {
+          status: "CONFIRMED",
+        },
+      },
+    },
+  });
 
+  if (!tour) {
+    throw new Error("Tour not found");
+  }
+
+  // Authorization check (same as updateTour)
+  const userEmail = req.user?.email;
+  if (!userEmail) {
+    throw new Error("User not authenticated");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: userEmail },
+    select: { role: true, email: true },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const host = await prisma.host.findUnique({
+    where: { email: userEmail },
+  });
+
+  const isAdmin = user.role === "ADMIN";
+  const isHostOwner = host && host.id === tour.hostId;
+
+  if (!isAdmin && !isHostOwner) {
+    throw new Error("You are not authorized to complete this tour");
+  }
+
+  // Check if tour end date has passed
+  const tourEndDate = new Date(tour.endDate);
+  const currentDate = new Date();
+  
+  if (tourEndDate > currentDate) {
+    throw new Error("Cannot complete tour before the end date");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Update tour to inactive
+    const updatedTour = await tx.tour.update({
+      where: { id },
+      data: {
+        isActive: false,
+      },
+      include: {
+        host: {
+          select: {
+            name: true,
+            profilePhoto: true,
+          },
+        },
+      },
+    });
+
+    // Update all confirmed bookings to COMPLETED
+    if (tour.bookings.length > 0) {
+      await tx.booking.updateMany({
+        where: {
+          tourId: id,
+          status: "CONFIRMED",
+        },
+        data: {
+          status: "COMPLETED",
+        },
+      });
+    }
+
+    return updatedTour;
+  });
+
+  return result;
+};
 // Don't forget to export these new functions at the bottom of the file:
 export const TourService = {
   createTour,
@@ -743,4 +827,5 @@ export const TourService = {
   getHostTours, // Add this
   getHostTourStats, // Add this
   getHostSingleTour, // Add this
+  completeTour
 };

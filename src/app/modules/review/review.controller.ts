@@ -3,9 +3,7 @@ import { Request, Response } from "express";
 import catchAsync from "../../shared/catchAsync";
 import sendResponse from "../../shared/sendResponse";
 import httpStatus from "http-status";
-import pick from "../../helper/pick";
 import { ReviewService } from "./review.service";
-import { reviewFilterableFields } from "./review.constant";
 
 const createReview = catchAsync(async (req: Request, res: Response) => {
   const result = await ReviewService.createReview(req);
@@ -19,60 +17,48 @@ const createReview = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllReviews = catchAsync(async (req: Request, res: Response) => {
-  const filters = pick(req.query, reviewFilterableFields);
-  const options = pick(req.query, ["page", "limit", "sortBy", "sortOrder"]);
-  const result = await ReviewService.getAllReviews(filters, options);
+  const result = await ReviewService.getAllReviews();
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Reviews retrieved successfully!",
-    meta: result.meta,
-    data: result.data,
+    data: result,
   });
 });
 
 const getTourReviews = catchAsync(async (req: Request, res: Response) => {
   const { tourId } = req.params;
-  const filters = pick(req.query, ["minRating", "maxRating"]);
-  const options = pick(req.query, ["page", "limit", "sortBy", "sortOrder"]);
-  const result = await ReviewService.getTourReviews(tourId, filters, options);
+  const result = await ReviewService.getTourReviews(tourId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Tour reviews retrieved successfully!",
-    meta: result.meta,
-    data: result.data,
+    data: result,
   });
 });
 
 const getHostReviews = catchAsync(async (req: Request, res: Response) => {
   const { hostId } = req.params;
-  const filters = pick(req.query, ["minRating", "maxRating"]);
-  const options = pick(req.query, ["page", "limit", "sortBy", "sortOrder"]);
-  const result = await ReviewService.getHostReviews(hostId, filters, options);
+  const result = await ReviewService.getHostReviews(hostId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Host reviews retrieved successfully!",
-    meta: result.meta,
-    data: result.data,
+    data: result,
   });
 });
 
 const getMyReviews = catchAsync(async (req: Request, res: Response) => {
-  const filters = pick(req.query, reviewFilterableFields);
-  const options = pick(req.query, ["page", "limit", "sortBy", "sortOrder"]);
-  const result = await ReviewService.getMyReviews(req, filters, options);
+  const result = await ReviewService.getMyReviews(req);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
     message: "Your reviews retrieved successfully!",
-    meta: result.meta,
-    data: result.data,
+    data: result,
   });
 });
 
