@@ -106,6 +106,19 @@ const getHostSingleTour = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const completeTour = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = await TourService.completeTour(id, req);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Tour completed successfully! All bookings updated.',
+    data: result,
+  });
+});
+
+
 // Update the export to include new controllers
 export const TourController = {
   createTour,
@@ -116,4 +129,5 @@ export const TourController = {
   getHostTours,        
   getHostTourStats,    
   getHostSingleTour,   
+  completeTour
 };

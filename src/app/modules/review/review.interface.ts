@@ -11,21 +11,6 @@ export type UpdateReviewInput = {
   isApproved?: boolean;
 };
 
-export type ReviewFilters = {
-  searchTerm?: string;
-  rating?: number;
-  hostId?: string;
-  touristId?: string;
-  tourId?: string;
-  minRating?: number;
-  maxRating?: number;
-  isApproved?: boolean;
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-};
-
 export type ReviewStats = {
   totalReviews: number;
   averageRating: number;
@@ -36,5 +21,4 @@ export type ReviewStats = {
     4: number;
     5: number;
   };
-  recentReviews: any[];
 };

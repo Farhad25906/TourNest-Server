@@ -1,24 +1,10 @@
 // review.constant.ts
-export const reviewSearchableFields = ["id", "comment"];
-
-export const reviewFilterableFields = [
-  "searchTerm",
-  "rating",
-  "hostId",
-  "touristId",
-  "tourId",
-  "isApproved",
-  "minRating",
-  "maxRating",
-];
-
 export const reviewPopulateFields = {
   booking: {
     select: {
       id: true,
       bookingDate: true,
       numberOfPeople: true,
-      totalAmount: true,
     },
   },
   host: {
@@ -40,7 +26,6 @@ export const reviewPopulateFields = {
       id: true,
       title: true,
       destination: true,
-      images: true,
     },
   },
 };
