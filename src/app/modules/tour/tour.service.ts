@@ -371,7 +371,7 @@ const updateTour = async (id: string, req: Request): Promise<Tour> => {
 };
 
 const deleteTour = async (id: string) => {
-  // First check if tour exists
+  // 1️⃣ Check if tour exists
   const tour = await prisma.tour.findUnique({
     where: { id },
   });
@@ -380,22 +380,31 @@ const deleteTour = async (id: string) => {
     throw new Error("Tour not found");
   }
 
-  // Delete the tour without authentication check
+  // 2️⃣ Transaction: delete bookings → delete tour → update host
   const result = await prisma.$transaction(async (tx) => {
-    // Delete the tour
+    // 🔥 Delete all bookings related to this tour
+    await tx.booking.deleteMany({
+      where: {
+        tourId: id,
+      },
+    });
+
+    // 🗑 Delete the tour
     const deletedTour = await tx.tour.delete({
       where: { id },
     });
 
-    // Decrement host's current tour count
-    await tx.host.update({
-      where: { id: tour.hostId },
-      data: {
-        currentTourCount: {
-          decrement: 1,
+    // 📉 Decrement host's current tour count
+    if (tour.hostId) {
+      await tx.host.update({
+        where: { id: tour.hostId },
+        data: {
+          currentTourCount: {
+            decrement: 1,
+          },
         },
-      },
-    });
+      });
+    }
 
     return deletedTour;
   });
@@ -777,7 +786,7 @@ const completeTour = async (id: string, req: Request): Promise<Tour> => {
   // Check if tour end date has passed
   const tourEndDate = new Date(tour.endDate);
   const currentDate = new Date();
-  
+
   if (tourEndDate > currentDate) {
     throw new Error("Cannot complete tour before the end date");
   }
@@ -827,5 +836,5 @@ export const TourService = {
   getHostTours, // Add this
   getHostTourStats, // Add this
   getHostSingleTour, // Add this
-  completeTour
+  completeTour,
 };
