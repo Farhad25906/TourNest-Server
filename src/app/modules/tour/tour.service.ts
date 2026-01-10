@@ -369,7 +369,6 @@ const updateTour = async (id: string, req: Request): Promise<Tour> => {
 
   return result;
 };
-
 const deleteTour = async (id: string) => {
   // 1️⃣ Check if tour exists
   const tour = await prisma.tour.findUnique({
@@ -381,7 +380,16 @@ const deleteTour = async (id: string) => {
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    // 2️⃣ Delete ALL reviews related to bookings of this tour
+    // 2️⃣ Delete ALL payments related to bookings of this tour
+    await tx.payment.deleteMany({
+      where: {
+        booking: {
+          tourId: id,
+        },
+      },
+    });
+
+    // 3️⃣ Delete ALL reviews related to bookings of this tour
     await tx.review.deleteMany({
       where: {
         booking: {
@@ -390,19 +398,19 @@ const deleteTour = async (id: string) => {
       },
     });
 
-    // 3️⃣ Delete ALL bookings of this tour
+    // 4️⃣ Delete ALL bookings of this tour
     await tx.booking.deleteMany({
       where: {
         tourId: id,
       },
     });
 
-    // 4️⃣ Delete the tour
+    // 5️⃣ Delete the tour
     const deletedTour = await tx.tour.delete({
       where: { id },
     });
 
-    // 5️⃣ Update host count
+    // 6️⃣ Update host tour count
     if (tour.hostId) {
       await tx.host.update({
         where: { id: tour.hostId },
