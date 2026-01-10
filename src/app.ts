@@ -17,7 +17,7 @@ app.post(
 );
 app.use(
   cors({
-    origin: "https://tournest-server.onrender.com",
+    origin: "https://tour-nest-client-hdxc.vercel.app",
     // origin: "http://localhost:3000",
     credentials: true,
   })
