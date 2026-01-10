@@ -380,21 +380,29 @@ const deleteTour = async (id: string) => {
     throw new Error("Tour not found");
   }
 
-  // 2️⃣ Transaction: delete bookings → delete tour → update host
   const result = await prisma.$transaction(async (tx) => {
-    // 🔥 Delete all bookings related to this tour
+    // 2️⃣ Delete ALL reviews related to bookings of this tour
+    await tx.review.deleteMany({
+      where: {
+        booking: {
+          tourId: id,
+        },
+      },
+    });
+
+    // 3️⃣ Delete ALL bookings of this tour
     await tx.booking.deleteMany({
       where: {
         tourId: id,
       },
     });
 
-    // 🗑 Delete the tour
+    // 4️⃣ Delete the tour
     const deletedTour = await tx.tour.delete({
       where: { id },
     });
 
-    // 📉 Decrement host's current tour count
+    // 5️⃣ Update host count
     if (tour.hostId) {
       await tx.host.update({
         where: { id: tour.hostId },
