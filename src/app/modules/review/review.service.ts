@@ -19,7 +19,7 @@ const createReview = async (req: Request): Promise<any> => {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "User email not found");
   }
 
-  // Get user info
+  // Get user
   const user = await prisma.user.findUnique({
     where: { email: userEmail },
     include: { tourist: true },
@@ -32,7 +32,7 @@ const createReview = async (req: Request): Promise<any> => {
     );
   }
 
-  // Check if booking exists and is completed
+  // Get booking
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: {
@@ -44,7 +44,7 @@ const createReview = async (req: Request): Promise<any> => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Booking not found");
   }
 
-  // Check if booking belongs to the user
+  // Validations
   if (booking.userId !== user.id) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -52,7 +52,6 @@ const createReview = async (req: Request): Promise<any> => {
     );
   }
 
-  // Check if booking is completed
   if (booking.status !== "COMPLETED") {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
@@ -60,17 +59,6 @@ const createReview = async (req: Request): Promise<any> => {
     );
   }
 
-  // Check if tour has ended
-  // const tourEndDate = new Date(booking.tour.endDate);
-  // const currentDate = new Date();
-  // if (tourEndDate > currentDate) {
-  //   throw new ApiError(
-  //     StatusCodes.BAD_REQUEST,
-  //     "You can only review after the tour has ended"
-  //   );
-  // }
-
-  // Check if review already exists for this booking
   const existingReview = await prisma.review.findUnique({
     where: { bookingId },
   });
@@ -82,22 +70,16 @@ const createReview = async (req: Request): Promise<any> => {
     );
   }
 
-  // Create review
-  const result = await prisma.$transaction(async (tx) => {
-    if (!user.tourist) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        "Only tourists can submit a review"
-      );
-    }
-    // Create the review
-    const review = await tx.review.create({
+  // SIMPLE TRANSACTION - only essential writes
+  const review = await prisma.$transaction(async (tx) => {
+    // 1. Create review
+    const newReview = await tx.review.create({
       data: {
         bookingId,
         rating,
         comment,
         hostId: booking.tour.hostId,
-        touristId: user.tourist.id,
+        touristId: booking.tour.id,
         tourId: booking.tourId,
       },
       include: {
@@ -105,7 +87,7 @@ const createReview = async (req: Request): Promise<any> => {
       },
     });
 
-    // Mark booking as reviewed
+    // 2. Update booking
     await tx.booking.update({
       where: { id: bookingId },
       data: {
@@ -113,16 +95,57 @@ const createReview = async (req: Request): Promise<any> => {
       },
     });
 
-    // Update tour average rating
-    await updateTourRating(tx, booking.tourId);
-
-    // Update host average rating
-    await updateHostRating(tx, booking.tour.hostId);
-
-    return review;
+    return newReview;
+  }, {
+    timeout: 8000, // 8 seconds should be plenty
   });
 
-  return result;
+  // Update ratings separately (not in transaction)
+  try {
+    // Calculate and update tour rating
+    const tourStats = await prisma.review.aggregate({
+      where: {
+        tourId: booking.tourId,
+        isApproved: true,
+        isDeleted: false,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    await prisma.tour.update({
+      where: { id: booking.tourId },
+      data: {
+        averageRating: tourStats._avg.rating || 0,
+        totalReviews: tourStats._count.rating,
+      },
+    });
+
+    // Calculate and update host rating
+    const hostStats = await prisma.review.aggregate({
+      where: {
+        hostId: booking.tour.hostId,
+        isApproved: true,
+        isDeleted: false,
+      },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+
+    await prisma.host.update({
+      where: { id: booking.tour.hostId },
+      data: {
+        averageRating: hostStats._avg.rating || 0,
+        totalReviews: hostStats._count.rating,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to update ratings:', error);
+    // Don't fail the review creation if rating updates fail
+    // Can implement retry logic here
+  }
+
+  return review;
 };
 
 const updateTourRating = async (
