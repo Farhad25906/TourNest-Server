@@ -66,12 +66,14 @@ model Host {
     totalReviews  Int    @default(0)
 
     // Relations
-    tours        Tour[]
-    blogs        Blog[]
-    user         User          @relation(fields: [email], references: [email])
-    subscription Subscription? // No @relation needed here, it's defined in Subscription model
-    reviews      Review[]
-    payouts      Payout[]
+    tours          Tour[]
+    blogs          Blog[]
+    user           User          @relation(fields: [email], references: [email])
+    subscription   Subscription? // No @relation needed here, it's defined in Subscription model
+    reviews        Review[]
+    payouts        Payout[]
+    // subscriptionId String?
+    // subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
 
     @@map("hosts")
 }

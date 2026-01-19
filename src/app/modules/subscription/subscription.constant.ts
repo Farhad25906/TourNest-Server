@@ -11,7 +11,11 @@ export const subscriptionPlanFilterableFields = [
   "blogLimit",
 ];
 
-export const subscriptionSearchableFields = ["status", "host.name", "host.email"];
+export const subscriptionSearchableFields = [
+  "status",
+  "host.name",
+  "host.email",
+];
 
 export const subscriptionFilterableFields = [
   "searchTerm",
@@ -21,7 +25,26 @@ export const subscriptionFilterableFields = [
   "hostName",
   "hostEmail",
 ];
+export const SUBSCRIPTION_PAYMENT_STATUS = {
+  PENDING: "PENDING",
+  PROCESSING: "PROCESSING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
+} as const;
 
+export const SUBSCRIPTION_PAYMENT_METHOD = {
+  STRIPE: "STRIPE",
+  BKASH: "BKASH",
+  NAGAD: "NAGAD",
+  BANK: "BANK",
+} as const;
+
+export const subscriptionPaymentSuccessUrl = (sessionId: string) =>
+  `${process.env.FRONTEND_URL}/buy-subscription/payment/success?session_id=${sessionId}`;
+
+export const subscriptionPaymentCancelUrl = (subscriptionId: string) =>
+  `${process.env.FRONTEND_URL}/subscription/payment/cancel?subscription_id=${subscriptionId}`;
 // These will be seeded to database
 export const DEFAULT_SUBSCRIPTION_PLANS = [
   {
@@ -36,6 +59,7 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
       "Create up to 5 blog posts",
       "Basic profile listing",
       "Customer support",
+      "Featured in search results",
     ],
     isActive: true,
   },
@@ -65,11 +89,9 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
     features: [
       "Create up to 50 tours per year",
       "Create unlimited blog posts",
-      "Top placement in search results",
-      "24/7 priority support",
-      "Advanced analytics",
-      "Marketing tools",
-      "Custom branding",
+      "Featured in search results",
+      "Priority customer support",
+      "Analytics dashboard",
     ],
     isActive: true,
   },

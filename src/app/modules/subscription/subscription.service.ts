@@ -1,9 +1,10 @@
-// subscription.service.ts
 import {
   Subscription,
   SubscriptionPlan,
   SubscriptionStatus,
   Prisma,
+  PaymentStatus,
+  PaymentMethod,
 } from "@prisma/client";
 import { prisma } from "../../shared/prisma";
 import { IOptions, paginationHelper } from "../../helper/paginationHelper";
@@ -13,6 +14,32 @@ import {
   DEFAULT_SUBSCRIPTION_PLANS,
 } from "./subscription.constant";
 import { IJWTPayload } from "../../types/common";
+import { stripe } from "../../config/stripe";
+import envVars from "../../config/env";
+import ApiError from "../../errors/ApiError";
+import { StatusCodes } from "http-status-codes";
+
+// Add these helper functions at the top
+const calculateEndDate = (startDate: Date, durationMonths: number): Date => {
+  const endDate = new Date(startDate);
+  endDate.setMonth(endDate.getMonth() + durationMonths);
+  return endDate;
+};
+
+const updateHostSubscriptionData = async (
+  hostId: string,
+  plan: SubscriptionPlan,
+  subscriptionId: string,
+) => {
+  await prisma.host.update({
+    where: { id: hostId },
+    data: {
+      subscriptionId: subscriptionId,
+      tourLimit: plan.tourLimit,
+      currentTourCount: 0, // Reset tour count for new subscription
+    },
+  });
+};
 
 // Initialize default plans in database
 const initializeDefaultPlans = async () => {
@@ -33,6 +60,20 @@ const initializeDefaultPlans = async () => {
       return { success: true, message: "Default plans initialized" };
     }
 
+    // Optional: Check if all default plans exist, create missing ones
+    for (const defaultPlan of DEFAULT_SUBSCRIPTION_PLANS) {
+      const existingPlan = await prisma.subscriptionPlan.findFirst({
+        where: { name: defaultPlan.name },
+      });
+
+      if (!existingPlan) {
+        await prisma.subscriptionPlan.create({
+          data: defaultPlan,
+        });
+        console.log(`✅ Created missing plan: ${defaultPlan.name}`);
+      }
+    }
+
     return { success: true, message: "Plans already exist" };
   } catch (error: any) {
     console.error("❌ Error initializing plans:", error.message);
@@ -41,9 +82,21 @@ const initializeDefaultPlans = async () => {
 };
 
 // Create subscription plan (Admin)
-const createSubscriptionPlan = async (payload: any): Promise<SubscriptionPlan> => {
+const createSubscriptionPlan = async (
+  payload: any,
+): Promise<SubscriptionPlan> => {
+  // Validate blogLimit if provided
+  if (payload.blogLimit !== undefined && payload.blogLimit !== null) {
+    if (payload.blogLimit < 0) {
+      throw new Error("blogLimit must be greater than or equal to 0");
+    }
+  }
+
   const result = await prisma.subscriptionPlan.create({
-    data: payload,
+    data: {
+      ...payload,
+      blogLimit: payload.blogLimit === 0 ? null : payload.blogLimit, // Convert 0 to null for unlimited
+    },
   });
 
   return result;
@@ -120,6 +173,20 @@ const getAllSubscriptionPlans = async (params: any, options: IOptions) => {
   };
 };
 
+const getAllPlans = async () => {
+  // Get all subscriptions from Prisma
+  const subscriptions = await prisma.subscriptionPlan.findMany({
+    where: {
+      isActive: true,
+    },
+    orderBy: {
+      price: "asc",
+    },
+  });
+
+  return subscriptions;
+};
+
 // Get single subscription plan
 const getSingleSubscriptionPlan = async (id: string) => {
   const result = await prisma.subscriptionPlan.findUnique({
@@ -134,7 +201,10 @@ const getSingleSubscriptionPlan = async (id: string) => {
 };
 
 // Update subscription plan (Admin)
-const updateSubscriptionPlan = async (id: string, data: any): Promise<SubscriptionPlan> => {
+const updateSubscriptionPlan = async (
+  id: string,
+  data: any,
+): Promise<SubscriptionPlan> => {
   const plan = await prisma.subscriptionPlan.findUnique({
     where: { id },
   });
@@ -143,16 +213,53 @@ const updateSubscriptionPlan = async (id: string, data: any): Promise<Subscripti
     throw new Error("Subscription plan not found");
   }
 
+  // Handle blogLimit conversion
+  const updateData = { ...data };
+  if (updateData.blogLimit !== undefined) {
+    updateData.blogLimit =
+      updateData.blogLimit === 0 ? null : updateData.blogLimit;
+  }
+
   const result = await prisma.subscriptionPlan.update({
     where: { id },
-    data,
+    data: updateData,
   });
+
+  // Update existing active subscriptions if tourLimit or blogLimit changed
+  if (data.tourLimit !== undefined || data.blogLimit !== undefined) {
+    await prisma.subscription.updateMany({
+      where: {
+        planId: id,
+        status: "ACTIVE",
+      },
+      data: {
+        tourLimit:
+          data.tourLimit !== undefined ? data.tourLimit : plan.tourLimit,
+        remainingTours:
+          data.tourLimit !== undefined ? data.tourLimit : undefined,
+        blogLimit:
+          data.blogLimit !== undefined
+            ? data.blogLimit === 0
+              ? null
+              : data.blogLimit
+            : plan.blogLimit,
+        remainingBlogs:
+          data.blogLimit !== undefined
+            ? data.blogLimit === 0
+              ? null
+              : data.blogLimit
+            : undefined,
+      },
+    });
+  }
 
   return result;
 };
 
 // Delete subscription plan (Admin)
-const deleteSubscriptionPlan = async (id: string): Promise<SubscriptionPlan> => {
+const deleteSubscriptionPlan = async (
+  id: string,
+): Promise<SubscriptionPlan> => {
   const plan = await prisma.subscriptionPlan.findUnique({
     where: { id },
   });
@@ -180,97 +287,523 @@ const deleteSubscriptionPlan = async (id: string): Promise<SubscriptionPlan> => 
   return result;
 };
 
+// Initiate subscription payment (similar to booking payment)
+const initiateSubscriptionPayment = async (
+  subscriptionId: string,
+  userEmail: string,
+) => {
+  const user = await prisma.user.findUnique({
+    where: { email: userEmail },
+    select: { id: true, email: true },
+  });
+
+  if (!user) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "User not found");
+  }
+
+  // Get subscription details with host
+  const subscription = await prisma.subscription.findUnique({
+    where: { id: subscriptionId },
+    include: {
+      plan: true,
+      host: {
+        include: {
+          user: true,
+        },
+      },
+    },
+  });
+
+  if (!subscription) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Subscription not found");
+  }
+
+  // Check if subscription belongs to user
+  if (subscription.host.user.email !== userEmail) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You are not authorized to pay for this subscription",
+    );
+  }
+
+  // Check if subscription is already active
+  if (subscription.status === SubscriptionStatus.ACTIVE) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "This subscription is already active",
+    );
+  }
+
+  // Check if subscription is cancelled or expired
+  if (
+    subscription.status === SubscriptionStatus.CANCELLED ||
+    subscription.status === SubscriptionStatus.EXPIRED
+  ) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "This subscription cannot be paid for",
+    );
+  }
+
+  // Check if plan price is 0 (free plan)
+  if (subscription.plan.price === 0) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Free plans don't require payment",
+    );
+  }
+
+  // Check for existing active payment session
+  const existingPayment = await prisma.payment.findFirst({
+    where: {
+      subscriptionId,
+      status: {
+        in: [PaymentStatus.PENDING, PaymentStatus.PROCESSING],
+      },
+    },
+  });
+
+  if (existingPayment && existingPayment.stripeSessionId) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(
+        existingPayment.stripeSessionId,
+      );
+      if (session.status === "open") {
+        return {
+          paymentUrl: session.url,
+          sessionId: session.id,
+          paymentId: existingPayment.id,
+        };
+      }
+    } catch (error) {
+      // Session expired, create new one
+      console.log("Previous session expired, creating new one");
+    }
+  }
+
+  // Create payment record for subscription
+  const payment = await prisma.payment.create({
+    data: {
+      userId: user.id,
+      subscriptionId,
+      amount: subscription.plan.price,
+      currency: "USD",
+      paymentMethod: PaymentMethod.STRIPE,
+      status: PaymentStatus.PENDING,
+      description: `Subscription payment for ${subscription.plan.name} plan`,
+      metadata: {
+        subscriptionId,
+        planName: subscription.plan.name,
+        duration: subscription.plan.duration,
+        planId: subscription.planId,
+      },
+    },
+  });
+
+  // Create Stripe Checkout Session for subscription
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    mode: "payment",
+    customer_email: user.email,
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: `${subscription.plan.name} Subscription Plan`,
+            description: subscription.plan.description,
+            metadata: {
+              plan_id: subscription.planId,
+              subscription_id: subscriptionId,
+            },
+          },
+          unit_amount: Math.round(subscription.plan.price * 100), // Convert to cents
+        },
+        quantity: 1,
+      },
+    ],
+    metadata: {
+      subscriptionId,
+      userId: user.id,
+      paymentId: payment.id,
+      planName: subscription.plan.name,
+      planDuration: subscription.plan.duration.toString(),
+      planPrice: subscription.plan.price.toString(),
+      planId: subscription.planId,
+    },
+    success_url: `${envVars.FRONTEND_URL}/buy-subscription/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${envVars.FRONTEND_URL}/buy-subscription/payment/cancel?subscription_id=${subscriptionId}`,
+  });
+
+  // Update payment with session info
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data: {
+      stripeSessionId: session.id,
+      status: PaymentStatus.PROCESSING,
+    },
+  });
+
+  return {
+    paymentUrl: session.url,
+    sessionId: session.id,
+    paymentId: payment.id,
+  };
+};
+
+// Get subscription payment info
+const getSubscriptionPaymentInfo = async (
+  subscriptionId: string,
+  userEmail: string,
+) => {
+  const user = await prisma.user.findUnique({
+    where: { email: userEmail },
+  });
+
+  if (!user) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "User not found");
+  }
+
+  const subscription = await prisma.subscription.findUnique({
+    where: { id: subscriptionId },
+    include: {
+      plan: true,
+      host: {
+        include: {
+          user: true,
+        },
+      },
+      payments: {
+        where: {
+          status: {
+            in: [
+              PaymentStatus.PENDING,
+              PaymentStatus.PROCESSING,
+              PaymentStatus.COMPLETED,
+              PaymentStatus.FAILED,
+            ],
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
+  });
+
+  if (!subscription) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Subscription not found");
+  }
+
+  if (subscription.host.user.email !== userEmail) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You are not authorized to view this subscription",
+    );
+  }
+
+  const latestPayment = subscription.payments[0];
+
+  // Determine if payment can be initiated
+  let canPay = false;
+  let requiresPayment = false;
+
+  if (subscription.plan.price > 0) {
+    if (subscription.status === SubscriptionStatus.PENDING) {
+      canPay = true;
+      requiresPayment = true;
+    } else if (latestPayment && latestPayment.status === PaymentStatus.FAILED) {
+      canPay = true;
+      requiresPayment = true;
+    }
+  }
+
+  const isPaid = subscription.status === SubscriptionStatus.ACTIVE;
+  const isFree = subscription.plan.price === 0;
+
+  return {
+    subscription,
+    payment: latestPayment,
+    canPay,
+    isPaid,
+    isFree,
+    requiresPayment,
+    subscriptionStatus: subscription.status,
+    plan: subscription.plan,
+  };
+};
+
 // Create subscription (Host)
+// const createSubscription = async (user: IJWTPayload, planId: string) => {
+//   try {
+//     // Find host
+//     const host = await prisma.host.findUnique({
+//       where: { email: user.email },
+//       include: { user: true },
+//     });
+
+//     if (!host) {
+//       throw new ApiError(StatusCodes.NOT_FOUND, "Host not found");
+//     }
+
+//     // Get subscription plan
+//     const plan = await prisma.subscriptionPlan.findUnique({
+//       where: { id: planId },
+//     });
+
+//     if (!plan) {
+//       throw new ApiError(StatusCodes.NOT_FOUND, "Subscription plan not found");
+//     }
+
+//     if (!plan.isActive) {
+//       throw new ApiError(
+//         StatusCodes.BAD_REQUEST,
+//         "This subscription plan is not available",
+//       );
+//     }
+
+//     // Check for existing active subscription
+//     const existingActiveSubscription = await prisma.subscription.findFirst({
+//       where: {
+//         hostId: host.id,
+//         status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.PENDING] },
+//       },
+//     });
+
+//     if (existingActiveSubscription) {
+//       throw new ApiError(
+//         StatusCodes.BAD_REQUEST,
+//         "You already have an active or pending subscription. Please cancel it first.",
+//       );
+//     }
+
+//     // Calculate dates
+//     const startDate = new Date();
+//     const endDate = calculateEndDate(startDate, plan.duration);
+
+//     // Determine initial status based on price
+//     const initialStatus =
+//       plan.price === 0 ? SubscriptionStatus.ACTIVE : SubscriptionStatus.PENDING;
+
+//     // Create subscription
+//     const subscription = await prisma.subscription.create({
+//       data: {
+//         hostId: host.id,
+//         planId: plan.id,
+//         startDate,
+//         endDate,
+//         status: initialStatus,
+//         autoRenew: true,
+//         tourLimit: plan.tourLimit,
+//         remainingTours: plan.tourLimit,
+//         blogLimit: plan.blogLimit,
+//         remainingBlogs: plan.blogLimit || 0,
+//       },
+//       include: {
+//         plan: true,
+//       },
+//     });
+
+//     // If free plan, update host immediately
+//     if (plan.price === 0) {
+//       await updateHostSubscriptionData(host.id, plan, subscription.id);
+
+//       return {
+//         success: true,
+//         subscription,
+//         message: "Free subscription activated successfully",
+//         requiresPayment: false,
+//       };
+//     }
+//     console.log(host?.user.id);
+//     // For paid plans, create a payment record
+//     const payment = await prisma.payment.create({
+//       data: {
+//         userId: host?.user.id,
+//         amount: plan.price,
+//         currency: "USD",
+//         paymentMethod: PaymentMethod.STRIPE,
+//         status: PaymentStatus.PENDING,
+//         subscriptionId: subscription.id,
+//         description: `Subscription payment for ${plan.name} plan`,
+//         metadata: {
+//           planId: plan.id,
+//           planName: plan.name,
+//           duration: plan.duration,
+//         },
+//       },
+//     });
+
+//     return {
+//       success: true,
+//       subscription,
+//       payment,
+//       message: "Subscription created successfully. Please complete payment.",
+//       requiresPayment: true,
+//       paymentId: payment.id,
+//       subscriptionId: subscription.id,
+//     };
+//   } catch (error: any) {
+//     console.error("Error creating subscription:", error.message);
+//     if (error instanceof ApiError) {
+//       throw error;
+//     }
+//     throw new ApiError(
+//       StatusCodes.INTERNAL_SERVER_ERROR,
+//       `Failed to create subscription: ${error.message}`,
+//     );
+//   }
+// };
+
 const createSubscription = async (user: IJWTPayload, planId: string) => {
   try {
-    // Find host
-    const host = await prisma.host.findUnique({
-      where: { email: user.email },
-      include: { user: true },
-    });
+    // Start transaction with longer timeout
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // Find host
+        const host = await tx.host.findUnique({
+          where: { email: user.email },
+          include: { user: true },
+        });
 
-    if (!host) {
-      throw new Error("Host not found");
-    }
+        if (!host) {
+          throw new ApiError(StatusCodes.NOT_FOUND, "Host not found");
+        }
 
-    // Get subscription plan
-    const plan = await prisma.subscriptionPlan.findUnique({
-      where: { id: planId },
-    });
+        // Get subscription plan
+        const plan = await tx.subscriptionPlan.findUnique({
+          where: { id: planId },
+        });
 
-    if (!plan) {
-      throw new Error("Subscription plan not found");
-    }
+        if (!plan) {
+          throw new ApiError(
+            StatusCodes.NOT_FOUND,
+            "Subscription plan not found",
+          );
+        }
 
-    if (!plan.isActive) {
-      throw new Error("This subscription plan is not available");
-    }
+        if (!plan.isActive) {
+          throw new ApiError(
+            StatusCodes.BAD_REQUEST,
+            "This subscription plan is not available",
+          );
+        }
 
-    // Check for existing active subscription
-    const existingActiveSubscription = await prisma.subscription.findFirst({
-      where: {
-        hostId: host.id,
-        status: "ACTIVE",
-      },
-    });
+        // Check for existing active subscription
+        const existingActiveSubscription = await tx.subscription.findFirst({
+          where: {
+            hostId: host.id,
+            status: {
+              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.PENDING],
+            },
+          },
+        });
 
-    if (existingActiveSubscription && plan.price > 0) {
-      throw new Error(
-        "You already have an active subscription. Please cancel it first."
-      );
-    }
+        if (existingActiveSubscription) {
+          throw new ApiError(
+            StatusCodes.BAD_REQUEST,
+            "You already have an active or pending subscription. Please cancel it first.",
+          );
+        }
 
-    // Calculate dates
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setFullYear(endDate.getFullYear() + 1); // 1 year subscription
+        // Calculate dates
+        const startDate = new Date();
+        const endDate = calculateEndDate(startDate, plan.duration);
 
-    // Create subscription
-    const subscription = await prisma.subscription.create({
-      data: {
-        hostId: host.id,
-        planId: plan.id,
-        startDate,
-        endDate,
-        status: plan.price === 0 ? "ACTIVE" : "PENDING", // Free plans active immediately
-        autoRenew: true,
-        tourLimit: plan.tourLimit,
-        remainingTours: plan.tourLimit,
-        blogLimit: plan.blogLimit,
-        remainingBlogs: plan.blogLimit || 0,
-      },
-      include: {
-        plan: true,
-      },
-    });
+        // Determine initial status based on price
+        const initialStatus =
+          plan.price === 0
+            ? SubscriptionStatus.ACTIVE
+            : SubscriptionStatus.PENDING;
 
-    // If free plan, update host immediately
-    if (plan.price === 0) {
-      await prisma.host.update({
-        where: { id: host.id },
-        data: {
-          tourLimit: plan.tourLimit,
-          currentTourCount: 0,
+        // Handle blog limit correctly (null means unlimited)
+        const blogLimit = plan.blogLimit === 0 ? null : plan.blogLimit;
+        const remainingBlogs = blogLimit || 0;
+
+        // Create subscription
+        const subscription = await tx.subscription.create({
+          data: {
+            hostId: host.id,
+            planId: plan.id,
+            startDate,
+            endDate,
+            status: initialStatus,
+            autoRenew: true,
+            tourLimit: plan.tourLimit,
+            remainingTours: plan.tourLimit,
+            blogLimit: blogLimit,
+            remainingBlogs: remainingBlogs,
+          },
+          include: {
+            plan: true,
+          },
+        });
+
+        // If free plan, update host immediately and return
+        // if (plan.price === 0) {
+        //   await tx.host.update({
+        //     where: { id: host.id },
+        //     data: {
+        //       subscriptionId: subscription.id,
+        //       tourLimit: plan.tourLimit,
+        //       currentTourCount: 0,
+        //       blogLimit: blogLimit,
+        //       currentBlogCount: 0,
+        //     },
+        //   });
+
+        //   return {
+        //     success: true,
+        //     subscription,
+        //     message: "Free subscription activated successfully",
+        //     requiresPayment: false,
+        //   };
+        // }
+
+        // For paid plans, create a payment record
+        const payment = await tx.payment.create({
+          data: {
+            userId: host.user.id,
+            amount: plan.price,
+            currency: "USD",
+            paymentMethod: PaymentMethod.STRIPE,
+            status: PaymentStatus.PENDING,
+            subscriptionId: subscription.id,
+            description: `Subscription payment for ${plan.name} plan`,
+            metadata: {
+              planId: plan.id,
+              planName: plan.name,
+              duration: plan.duration,
+            },
+          },
+        });
+
+        return {
+          success: true,
+          subscription,
+          payment,
+          message:
+            "Subscription created successfully. Please complete payment.",
+          requiresPayment: true,
+          paymentId: payment.id,
           subscriptionId: subscription.id,
-        },
-      });
+        };
+      },
+      {
+        maxWait: 10000, // Maximum time to wait for transaction
+        timeout: 10000, // Transaction timeout (10 seconds)
+      },
+    );
 
-      return {
-        success: true,
-        subscription,
-        message: "Free subscription activated successfully",
-      };
-    }
-
-    // For paid plans, return pending subscription
-    return {
-      success: true,
-      subscription,
-      message: "Subscription created successfully. Please complete payment.",
-    };
+    return result;
   } catch (error: any) {
     console.error("Error creating subscription:", error.message);
-    throw new Error(`Failed to create subscription: ${error.message}`);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      `Failed to create subscription: ${error.message}`,
+    );
   }
 };
 
@@ -279,52 +812,71 @@ const getCurrentSubscription = async (hostEmail: string) => {
   try {
     const host = await prisma.host.findUnique({
       where: { email: hostEmail },
+      include: {
+        subscription: {
+          include: {
+            plan: true,
+            payments: {
+              where: {
+                status: PaymentStatus.COMPLETED,
+              },
+              orderBy: {
+                createdAt: "desc",
+              },
+              take: 1,
+            },
+          },
+        },
+      },
     });
 
     if (!host) {
-      throw new Error("Host not found");
+      throw new ApiError(StatusCodes.NOT_FOUND, "Host not found");
     }
 
-    const subscription = await prisma.subscription.findFirst({
-      where: {
-        hostId: host.id,
-        status: "ACTIVE",
-      },
-      include: {
-        plan: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    // If no active subscription, return free plan info
-    if (!subscription) {
-      const freePlan = await prisma.subscriptionPlan.findFirst({
-        where: { name: "Free" },
-      });
-
+    // Check for active subscription
+    if (
+      host.subscription &&
+      host.subscription.status === SubscriptionStatus.ACTIVE
+    ) {
       return {
-        plan: freePlan,
-        status: "FREE",
-        isFree: true,
-        tourLimit: freePlan?.tourLimit || 4,
-        remainingTours: freePlan?.tourLimit || 4,
-        blogLimit: freePlan?.blogLimit || 5,
-        remainingBlogs: freePlan?.blogLimit || 5,
-        nextBillingDate: null,
-        isActive: false,
+        ...host.subscription,
+        isActive: true,
+        isFree: host.subscription.plan.price === 0,
+        lastPayment: host.subscription.payments[0] || null,
       };
     }
 
+    // If no active subscription, return free plan info
+    const freePlan = await prisma.subscriptionPlan.findFirst({
+      where: { name: "Free", isActive: true },
+    });
+
+    if (!freePlan) {
+      throw new ApiError(StatusCodes.NOT_FOUND, "Free plan not found");
+    }
+
     return {
-      ...subscription,
-      isActive: true,
-      isFree: subscription.plan.price === 0,
+      plan: freePlan,
+      status: "FREE",
+      isFree: true,
+      tourLimit: freePlan.tourLimit,
+      remainingTours: freePlan.tourLimit,
+      blogLimit: freePlan.blogLimit,
+      remainingBlogs: freePlan.blogLimit || 0,
+      nextBillingDate: null,
+      isActive: false,
+      message: "You are currently on the free plan",
     };
   } catch (error: any) {
     console.error("Error getting current subscription:", error.message);
-    throw new Error(`Failed to get current subscription: ${error.message}`);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      `Failed to get current subscription: ${error.message}`,
+    );
   }
 };
 
@@ -333,53 +885,83 @@ const cancelSubscription = async (hostEmail: string) => {
   try {
     const host = await prisma.host.findUnique({
       where: { email: hostEmail },
-    });
-
-    if (!host) {
-      throw new Error("Host not found");
-    }
-
-    const subscription = await prisma.subscription.findFirst({
-      where: {
-        hostId: host.id,
-        status: "ACTIVE",
+      include: {
+        subscription: {
+          include: {
+            plan: true,
+          },
+        },
       },
     });
 
-    if (!subscription) {
-      throw new Error("No active subscription found");
+    if (!host) {
+      throw new ApiError(StatusCodes.NOT_FOUND, "Host not found");
+    }
+
+    if (!host.subscription) {
+      throw new ApiError(StatusCodes.NOT_FOUND, "No subscription found");
+    }
+
+    // Don't allow cancelling free plan (they can just not renew)
+    if (host.subscription.plan.price === 0) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        "Free plan cannot be cancelled. It will not auto-renew.",
+      );
+    }
+
+    // Don't allow cancelling if subscription is already cancelled
+    if (host.subscription.status === SubscriptionStatus.CANCELLED) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        "Subscription is already cancelled",
+      );
     }
 
     // Update subscription to cancelled
     const updatedSubscription = await prisma.subscription.update({
-      where: { id: subscription.id },
+      where: { id: host.subscription.id },
       data: {
-        status: "CANCELLED",
+        status: SubscriptionStatus.CANCELLED,
         autoRenew: false,
         cancelledAt: new Date(),
       },
     });
 
-    // Downgrade host to free plan
+    // Downgrade host to free plan after current period ends
     const freePlan = await prisma.subscriptionPlan.findFirst({
-      where: { name: "Free" },
+      where: { name: "Free", isActive: true },
     });
 
     if (freePlan) {
-      await prisma.host.update({
-        where: { id: host.id },
-        data: {
-          tourLimit: freePlan.tourLimit,
-          currentTourCount: Math.min(host.currentTourCount, freePlan.tourLimit),
-          subscriptionId: null,
-        },
-      });
+      // Don't immediately downgrade, let them use paid features until end date
+      // Only downgrade if subscription has ended
+      if (new Date() > new Date(host.subscription.endDate)) {
+        await prisma.host.update({
+          where: { id: host.id },
+          data: {
+            tourLimit: Math.min(host.tourLimit || 0, freePlan.tourLimit),
+          },
+        });
+      }
     }
 
-    return updatedSubscription;
+    return {
+      success: true,
+      subscription: updatedSubscription,
+      message:
+        "Subscription cancelled. You will retain access until the end of your billing period.",
+      endDate: updatedSubscription.endDate,
+    };
   } catch (error: any) {
     console.error("Error cancelling subscription:", error.message);
-    throw new Error(`Failed to cancel subscription: ${error.message}`);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      `Failed to cancel subscription: ${error.message}`,
+    );
   }
 };
 
@@ -388,6 +970,7 @@ const getAllSubscriptions = async (params: any, options: IOptions) => {
   const { page, limit, skip, sortBy, sortOrder } =
     paginationHelper.calculatePagination(options);
   const { searchTerm, ...filterData } = params;
+  console.log("khfgg ");
 
   const andConditions: Prisma.SubscriptionWhereInput[] = [];
 
@@ -410,12 +993,14 @@ const getAllSubscriptions = async (params: any, options: IOptions) => {
             },
           },
         },
-        // {
-        //   status: {
-        //     contains: searchTerm,
-        //     mode: "insensitive",
-        //   },
-        // },
+        {
+          plan: {
+            name: {
+              contains: searchTerm,
+              mode: "insensitive",
+            },
+          },
+        },
       ],
     });
   }
@@ -473,9 +1058,19 @@ const getAllSubscriptions = async (params: any, options: IOptions) => {
           email: true,
           profilePhoto: true,
           currentTourCount: true,
+          phone: true,
         },
       },
       plan: true,
+      payments: {
+        where: {
+          status: PaymentStatus.COMPLETED,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+      },
     },
     orderBy: {
       [sortBy]: sortOrder,
@@ -514,6 +1109,11 @@ const getSubscriptionDetails = async (subscriptionId: string) => {
         },
       },
       plan: true,
+      payments: {
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
     },
   });
 
@@ -541,9 +1141,31 @@ const updateSubscription = async (subscriptionId: string, updateData: any) => {
   if (updateData.status && updateData.status !== subscription.status) {
     updatePayload.status = updateData.status;
 
-    if (updateData.status === "CANCELLED") {
+    if (updateData.status === SubscriptionStatus.ACTIVE) {
+      // Activating subscription should update host
+      await updateHostSubscriptionData(
+        subscription.hostId,
+        subscription.plan,
+        subscriptionId,
+      );
+    } else if (updateData.status === SubscriptionStatus.CANCELLED) {
       updatePayload.cancelledAt = new Date();
       updatePayload.autoRenew = false;
+    } else if (updateData.status === SubscriptionStatus.EXPIRED) {
+      // Downgrade to free plan when expired
+      const freePlan = await prisma.subscriptionPlan.findFirst({
+        where: { name: "Free" },
+      });
+
+      if (freePlan) {
+        await prisma.host.update({
+          where: { id: subscription.hostId },
+          data: {
+            tourLimit: freePlan.tourLimit,
+            subscriptionId: null,
+          },
+        });
+      }
     }
   }
 
@@ -556,29 +1178,39 @@ const updateSubscription = async (subscriptionId: string, updateData: any) => {
 
   // Handle manual tour limit adjustment
   if (updateData.adjustTourLimit !== undefined) {
-    updatePayload.tourLimit = Math.max(
+    const newTourLimit = Math.max(
       1,
-      subscription.tourLimit + updateData.adjustTourLimit
+      subscription.tourLimit + updateData.adjustTourLimit,
     );
-    updatePayload.remainingTours = Math.max(
+    const newRemainingTours = Math.max(
       0,
-      (subscription.remainingTours || 0) + updateData.adjustTourLimit
+      (subscription.remainingTours || 0) + updateData.adjustTourLimit,
     );
+
+    updatePayload.tourLimit = newTourLimit;
+    updatePayload.remainingTours = newRemainingTours;
+
+    // Update host's tour limit
+    await prisma.host.update({
+      where: { id: subscription.hostId },
+      data: { tourLimit: newTourLimit },
+    });
   }
 
   // Handle manual blog limit adjustment
-  if (
-    updateData.adjustBlogLimit !== undefined &&
-    subscription.blogLimit !== null
-  ) {
-    updatePayload.blogLimit = Math.max(
+  if (updateData.adjustBlogLimit !== undefined) {
+    const currentBlogLimit = subscription.blogLimit || 0;
+    const newBlogLimit = Math.max(
       0,
-      (subscription.blogLimit || 0) + updateData.adjustBlogLimit
+      currentBlogLimit + updateData.adjustBlogLimit,
     );
-    updatePayload.remainingBlogs = Math.max(
+    const newRemainingBlogs = Math.max(
       0,
-      (subscription.remainingBlogs || 0) + updateData.adjustBlogLimit
+      (subscription.remainingBlogs || 0) + updateData.adjustBlogLimit,
     );
+
+    updatePayload.blogLimit = newBlogLimit === 0 ? null : newBlogLimit;
+    updatePayload.remainingBlogs = newRemainingBlogs;
   }
 
   // Handle admin notes
@@ -617,9 +1249,14 @@ const deleteSubscription = async (subscriptionId: string) => {
   }
 
   // Check if subscription is active
-  if (subscription.status === "ACTIVE") {
+  if (subscription.status === SubscriptionStatus.ACTIVE) {
     throw new Error("Cannot delete active subscription. Cancel it first.");
   }
+
+  // Delete associated payments first (if cascade not working)
+  await prisma.payment.deleteMany({
+    where: { subscriptionId: subscriptionId },
+  });
 
   // Delete the subscription
   const deletedSubscription = await prisma.subscription.delete({
@@ -642,7 +1279,6 @@ const getSubscriptionAnalytics = async () => {
   // Most popular plans
   const popularPlans = await prisma.subscription.groupBy({
     by: ["planId"],
-    where: { status: "ACTIVE" },
     _count: { id: true },
     orderBy: {
       _count: {
@@ -663,38 +1299,98 @@ const getSubscriptionAnalytics = async () => {
         planId: item.planId,
         planName: plan?.name || "Unknown",
         count: item._count.id,
+        price: plan?.price || 0,
       };
-    })
+    }),
   );
 
   // Calculate totals
-  const totalSubscriptions = countsByStatus.reduce((sum, item) => sum + item._count.id, 0);
-  const activeSubscriptions = countsByStatus.find((item) => item.status === "ACTIVE")?._count.id || 0;
+  const totalSubscriptions = countsByStatus.reduce(
+    (sum, item) => sum + item._count.id,
+    0,
+  );
+  const activeSubscriptions =
+    countsByStatus.find((item) => item.status === SubscriptionStatus.ACTIVE)
+      ?._count.id || 0;
+
+  // Monthly revenue (active paid subscriptions)
+  const activePaidSubscriptions = await prisma.subscription.findMany({
+    where: {
+      status: SubscriptionStatus.ACTIVE,
+      plan: {
+        price: { gt: 0 },
+      },
+    },
+    include: {
+      plan: true,
+    },
+  });
+
+  const monthlyRevenue = activePaidSubscriptions.reduce((sum, sub) => {
+    return sum + sub.plan.price / 12; // Convert annual to monthly
+  }, 0);
+
+  // Recent payments
+  const recentPayments = await prisma.payment.findMany({
+    where: {
+      subscriptionId: { not: null },
+      status: PaymentStatus.COMPLETED,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    include: {
+      subscription: {
+        include: {
+          host: {
+            select: { name: true, email: true },
+          },
+          plan: {
+            select: { name: true },
+          },
+        },
+      },
+    },
+  });
 
   return {
     overview: {
       total: totalSubscriptions,
       active: activeSubscriptions,
-      cancelled: countsByStatus.find((item) => item.status === "CANCELLED")?._count.id || 0,
-      pending: countsByStatus.find((item) => item.status === "PENDING")?._count.id || 0,
-      expired: countsByStatus.find((item) => item.status === "EXPIRED")?._count.id || 0,
+      cancelled:
+        countsByStatus.find(
+          (item) => item.status === SubscriptionStatus.CANCELLED,
+        )?._count.id || 0,
+      pending:
+        countsByStatus.find(
+          (item) => item.status === SubscriptionStatus.PENDING,
+        )?._count.id || 0,
+      expired:
+        countsByStatus.find(
+          (item) => item.status === SubscriptionStatus.EXPIRED,
+        )?._count.id || 0,
     },
-    metrics: {
-      activeSubscribers: activeSubscriptions,
+    revenue: {
+      monthly: monthlyRevenue,
+      annual: monthlyRevenue * 12,
     },
     popularPlans: planDetails,
-    recentActivity: await prisma.subscription.findMany({
+    recentPayments: recentPayments,
+    upcomingRenewals: await prisma.subscription.findMany({
       where: {
-        OR: [{ status: "ACTIVE" }, { status: "CANCELLED" }],
+        status: SubscriptionStatus.ACTIVE,
+        autoRenew: true,
+        endDate: {
+          lte: new Date(new Date().setDate(new Date().getDate() + 30)), // Next 30 days
+        },
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { endDate: "asc" },
       take: 10,
       include: {
         host: {
           select: { name: true, email: true },
         },
         plan: {
-          select: { name: true },
+          select: { name: true, price: true },
         },
       },
     }),
@@ -706,6 +1402,8 @@ export const SubscriptionService = {
   createSubscription,
   getCurrentSubscription,
   cancelSubscription,
+  initiateSubscriptionPayment,
+  getSubscriptionPaymentInfo,
 
   // Plan management (Admin & Public)
   initializeDefaultPlans,
@@ -714,6 +1412,7 @@ export const SubscriptionService = {
   getSingleSubscriptionPlan,
   updateSubscriptionPlan,
   deleteSubscriptionPlan,
+  getAllPlans,
 
   // Admin functions
   getAllSubscriptions,

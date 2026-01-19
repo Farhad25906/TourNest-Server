@@ -1,3 +1,4 @@
+
 // subscription.route.ts
 import express, { NextFunction, Request, Response } from 'express';
 import { SubscriptionController } from './subscription.controller';
@@ -15,6 +16,7 @@ const router = express.Router();
 // Public routes
 router.get('/plans', SubscriptionController.getAllSubscriptionPlans);
 router.get('/plans/:id', SubscriptionController.getSingleSubscriptionPlan);
+router.get('/subscriptionPlans', SubscriptionController.getAllPlans);
 
 // Host routes
 router.post(
@@ -24,6 +26,19 @@ router.post(
     req.body = createSubscriptionValidationSchema.parse(req.body);
     return SubscriptionController.createSubscription(req, res, next);
   }
+);
+
+// Subscription payment routes
+router.get(
+  '/:subscriptionId/payment-info',
+  auth(UserRole.HOST),
+  SubscriptionController.getSubscriptionPaymentInfo
+);
+
+router.post(
+  '/:subscriptionId/initiate-payment',
+  auth(UserRole.HOST),
+  SubscriptionController.initiateSubscriptionPayment
 );
 
 router.get(
@@ -69,7 +84,12 @@ router.delete(
   SubscriptionController.deleteSubscriptionPlan
 );
 
-
+// Admin subscription management routes
+router.get(
+  '/',
+  auth(UserRole.ADMIN),
+  SubscriptionController.getAllSubscriptions
+);
 
 router.get(
   '/:id',
