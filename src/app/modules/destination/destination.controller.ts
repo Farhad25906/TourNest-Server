@@ -5,7 +5,7 @@ import sendResponse from '../../shared/sendResponse';
 import { DestinationService } from './destination.service';
 
 const createDestination = catchAsync(async (req: Request, res: Response) => {
-    const result = await DestinationService.createDestination(req.body);
+    const result = await DestinationService.createDestination(req);
     sendResponse(res, {
         statusCode: httpStatus.OK,
         success: true,
@@ -35,7 +35,7 @@ const getSingleDestination = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateDestination = catchAsync(async (req: Request, res: Response) => {
-    const result = await DestinationService.updateDestination(req.params.id, req.body);
+    const result = await DestinationService.updateDestination(req.params.id, req);
     sendResponse(res, {
         statusCode: httpStatus.OK,
         success: true,
