@@ -7,6 +7,7 @@ import { subscriptionRoutes } from '../modules/subscription/subscription.route';
 import { blogRoutes } from '../modules/blog/blog.route';
 import { reviewRoutes } from '../modules/review/review.route';
 import { paymentRoutes } from '../modules/payment/payment.route';
+import { metaRoutes } from '../modules/meta/meta.route';
 
 
 
@@ -44,6 +45,10 @@ const moduleRoutes = [
     {
         path: '/payments',
         route: paymentRoutes
+    },
+    {
+        path: '/meta',
+        route: metaRoutes
     }
 ];
 

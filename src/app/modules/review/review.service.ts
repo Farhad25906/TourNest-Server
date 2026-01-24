@@ -260,14 +260,14 @@ const getMyReviews = async (req: Request) => {
     where: whereCondition,
     orderBy: { createdAt: "desc" },
     include: {
-      tourist: user.tourist ? undefined : {
+      tourist: {
         select: {
           id: true,
           name: true,
           profilePhoto: true,
         },
       },
-      host: user.host ? undefined : {
+      host: {
         select: {
           id: true,
           name: true,
@@ -337,6 +337,16 @@ const updateReview = async (id: string, user: IJWTPayload, updateData: any) => {
       StatusCodes.FORBIDDEN,
       "You are not authorized to update this review"
     );
+  }
+
+  // Security: Only admins can change approval status
+  if (!isAdmin && updateData.isApproved !== undefined) {
+    delete updateData.isApproved;
+  }
+
+  // Security: Only admins can change approval status
+  if (!isAdmin && updateData.isApproved !== undefined) {
+    delete updateData.isApproved;
   }
 
   // Update the review
