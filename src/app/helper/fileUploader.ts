@@ -4,76 +4,90 @@ import { v2 as cloudinary } from "cloudinary";
 import sharp from "sharp";
 import fs from "fs/promises";
 
+/* ----------------------------------
+   Multer Storage Configuration
+----------------------------------- */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(process.cwd(), "/uploads"));
+    cb(null, path.join(process.cwd(), "uploads"));
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + "-" + uniqueSuffix);
+    const ext = path.extname(file.originalname); // ✅ KEEP EXTENSION
+    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
-// Convert image to WebP format
+/* ----------------------------------
+   Convert Image to WebP Safely
+----------------------------------- */
 const convertToWebP = async (filePath: string): Promise<string> => {
-  const webpPath = filePath.replace(/\.[^.]+$/, ".webp");
+  const dir = path.dirname(filePath);
+  const baseName = path.basename(filePath, path.extname(filePath));
+  const webpPath = path.join(dir, `${baseName}.webp`);
 
   await sharp(filePath)
-    .webp({ quality: 85 }) // High quality WebP
-    .toFile(webpPath);
+    .webp({ quality: 85 })
+    .toFile(webpPath); // ✅ DIFFERENT OUTPUT FILE
 
-  // Delete original file
+  // Remove original file
   await fs.unlink(filePath);
 
   return webpPath;
 };
 
+/* ----------------------------------
+   Upload Single File to Cloudinary
+----------------------------------- */
 const uploadToCloudinary = async (file: Express.Multer.File) => {
-  // Configuration
   cloudinary.config({
-    cloud_name: "farhadhossen",
-    api_key: "329794487428411",
-    api_secret: "ATnVkiik6bBp2gydKASaiO1S_3s",
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+    api_key: process.env.CLOUDINARY_API_KEY!,
+    api_secret: process.env.CLOUDINARY_API_SECRET!,
   });
 
   try {
-    // Convert to WebP first
+    // Convert image to WebP
     const webpPath = await convertToWebP(file.path);
+    const publicId = path.basename(webpPath, ".webp");
 
-    // Update file path to WebP version
-    const webpFilename = path.basename(webpPath, ".webp");
-
-    // Upload to Cloudinary with WebP format
-    const uploadResult = await cloudinary.uploader.upload(webpPath, {
-      public_id: webpFilename,
+    // Upload WebP to Cloudinary
+    const result = await cloudinary.uploader.upload(webpPath, {
+      public_id: publicId,
       format: "webp",
       resource_type: "image",
     });
 
-    // Clean up the WebP file after upload
+    // Clean up WebP after upload
     await fs.unlink(webpPath);
 
-    return uploadResult;
+    return result;
   } catch (error) {
-    console.error("Error uploading to Cloudinary:", error);
-    // Clean up on error
+    console.error("Cloudinary upload error:", error);
+
+    // Cleanup in case of failure
     try {
       await fs.unlink(file.path);
-    } catch (cleanupError) {
-      console.error("Error cleaning up file:", cleanupError);
-    }
+    } catch (_) {}
+
     throw error;
   }
 };
 
-// Upload multiple files to Cloudinary
-const uploadMultipleToCloudinary = async (files: Express.Multer.File[]) => {
-  const uploadPromises = files.map((file) => uploadToCloudinary(file));
-  return await Promise.all(uploadPromises);
+/* ----------------------------------
+   Upload Multiple Files to Cloudinary
+----------------------------------- */
+const uploadMultipleToCloudinary = async (
+  files: Express.Multer.File[]
+) => {
+  return Promise.all(files.map((file) => uploadToCloudinary(file)));
 };
 
+/* ----------------------------------
+   Export Uploader
+----------------------------------- */
 export const fileUploader = {
   upload,
   uploadToCloudinary,
