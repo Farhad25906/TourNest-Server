@@ -12,7 +12,7 @@ const auth = (...roles: string[]) => {
     return async (req: Request & { user?: any }, res: Response, next: NextFunction) => {
         try {
             const token = req.cookies.accessToken || req.headers.authorization;
-            // console.log(token,"From Admin");
+            console.log(token,"From Admin");
             
 
             if (!token) {
