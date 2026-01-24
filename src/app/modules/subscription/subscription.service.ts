@@ -688,21 +688,31 @@ const createSubscription = async (user: IJWTPayload, planId: string) => {
           );
         }
 
-        // Check for existing active subscription
-        const existingActiveSubscription = await tx.subscription.findFirst({
+        // Check for existing subscription
+        const existingSubscription = await tx.subscription.findUnique({
           where: {
             hostId: host.id,
-            status: {
-              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.PENDING],
-            },
           },
         });
 
-        if (existingActiveSubscription) {
-          throw new ApiError(
-            StatusCodes.BAD_REQUEST,
-            "You already have an active or pending subscription. Please cancel it first.",
-          );
+        if (existingSubscription) {
+          if (
+            existingSubscription.status === SubscriptionStatus.ACTIVE ||
+            existingSubscription.status === SubscriptionStatus.PENDING
+          ) {
+            throw new ApiError(
+              StatusCodes.BAD_REQUEST,
+              "You already have an active or pending subscription. Please cancel it first.",
+            );
+          }
+
+          // If a subscription exists but is not ACTIVE or PENDING (e.g., CANCELLED or EXPIRED),
+          // we need to delete it because of the @@unique([hostId]) constraint on the subscription table
+          await tx.subscription.delete({
+            where: {
+              id: existingSubscription.id,
+            },
+          });
         }
 
         // Calculate dates
