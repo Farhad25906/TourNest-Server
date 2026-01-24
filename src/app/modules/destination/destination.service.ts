@@ -4,6 +4,8 @@ import { IDestination } from './destination.interface';
 import { fileUploader } from '../../helper/fileUploader';
 
 const createDestination = async (req: Request): Promise<IDestination> => {
+    console.log('req.body:', req.body); // Debug: see what you're receiving
+
     let imageUrl = req.body.image || '';
 
     // Handle image upload if file is present
@@ -14,10 +16,15 @@ const createDestination = async (req: Request): Promise<IDestination> => {
         }
     }
 
+    // If req.body has a data property, use that instead
+    const requestData = req.body.data ? JSON.parse(req.body.data) : req.body;
+
     const destinationData = {
-        ...req.body,
+        ...requestData,
         image: imageUrl,
     };
+
+    console.log('destinationData:', destinationData); // Debug: see what you're sending to Prisma
 
     const result = await prisma.destination.create({
         data: destinationData,
