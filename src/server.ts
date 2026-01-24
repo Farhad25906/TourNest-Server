@@ -3,20 +3,28 @@ import { Server } from 'http';
 import app from './app';
 import config from './config';
 import { seedSubscriptionPlansOnStartup } from './app/shared/seedSubscriptionPlans';
+import { seedAdminOnStartup } from './app/shared/seedAdmin';
 
 
 async function bootstrap() {
   let server: Server;
 
   try {
-    // Auto-seed subscription plans on server start
+    // Auto-seed subscription plans and admin on server start
     console.log('🚀 Starting server initialization...');
-    
+
     try {
       await seedSubscriptionPlansOnStartup();
       console.log('✅ Subscription plans check completed');
     } catch (error) {
       console.warn('⚠️ Subscription plan seeding failed, but server will continue:', error);
+    }
+
+    try {
+      await seedAdminOnStartup();
+      console.log('✅ Admin user check completed');
+    } catch (error) {
+      console.warn('⚠️ Admin user seeding failed, but server will continue:', error);
     }
 
     // Start the server

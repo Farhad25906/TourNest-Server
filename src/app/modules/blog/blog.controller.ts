@@ -22,12 +22,14 @@ const createBlog = catchAsync(async (req: Request, res: Response) => {
 const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
   const filters = pick(req.query, blogFilterableFields);
   const options = pick(req.query, ["page", "limit", "sortBy", "sortOrder"]);
-  
-  // If admin is requesting, show all blogs including drafts
-  if (req.user?.role === "ADMIN") {
-    delete filters.status; // Remove status filter for admin
+
+  // If admin is requesting, show all blogs including drafts and unapproved ones
+  const isAdmin = req.user?.role === "ADMIN";
+  if (isAdmin) {
+    delete filters.status;
+    filters.isAdminView = "true";
   }
-  
+
   const result = await BlogService.getAllBlogs(filters, options);
 
   sendResponse(res, {
@@ -119,7 +121,7 @@ const deleteComment = catchAsync(async (req: Request, res: Response) => {
 const toggleLike = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IJWTPayload;
   // console.log(req.user);
-  
+
   const { blogId } = req.params;
   const result = await BlogService.toggleLike(user, blogId);
 
@@ -156,6 +158,19 @@ const getMyBlogs = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateBlogStatus = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { isApproved } = req.body;
+  const result = await BlogService.updateBlogStatus(id, isApproved);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: `Blog ${isApproved ? 'approved' : 'hidden'} successfully!`,
+    data: result,
+  });
+});
+
 export const BlogController = {
   createBlog,
   getAllBlogs,
@@ -168,4 +183,5 @@ export const BlogController = {
   toggleLike,
   toggleCommentLike,
   getMyBlogs,
+  updateBlogStatus,
 };

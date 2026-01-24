@@ -86,4 +86,11 @@ router.post(
   BlogController.toggleCommentLike
 );
 
+// Admin routes
+router.patch(
+  "/:id/approve-status",
+  auth(UserRole.ADMIN),
+  BlogController.updateBlogStatus
+);
+
 export const blogRoutes = router;

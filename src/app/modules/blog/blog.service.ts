@@ -77,10 +77,13 @@ const getAllBlogs = async (params: any, options: IOptions) => {
 
   const andConditions: Prisma.BlogWhereInput[] = [];
 
-  // Only show published blogs for non-admins (add auth check in controller)
-  andConditions.push({
-    status: "PUBLISHED",
-  });
+  // Filtering logic
+  if (!params.isAdminView) {
+    andConditions.push({
+      status: "PUBLISHED",
+      isApproved: true,
+    });
+  }
 
   if (searchTerm) {
     andConditions.push({
@@ -584,6 +587,14 @@ const getMyBlogs = async (user: IJWTPayload) => {
   return blogs;
 };
 
+const updateBlogStatus = async (id: string, isApproved: boolean) => {
+  const result = await prisma.blog.update({
+    where: { id },
+    data: { isApproved },
+  });
+  return result;
+};
+
 export const BlogService = {
   createBlog,
   getAllBlogs,
@@ -596,4 +607,5 @@ export const BlogService = {
   toggleLike,
   toggleCommentLike,
   getMyBlogs,
+  updateBlogStatus,
 };

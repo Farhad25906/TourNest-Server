@@ -1,0 +1,12 @@
+// Destination Model
+model Destination {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  image       String
+  description String?
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("destinations")
+}

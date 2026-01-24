@@ -8,6 +8,7 @@ import { blogRoutes } from '../modules/blog/blog.route';
 import { reviewRoutes } from '../modules/review/review.route';
 import { paymentRoutes } from '../modules/payment/payment.route';
 import { metaRoutes } from '../modules/meta/meta.route';
+import { DestinationRoutes } from '../modules/destination/destination.route';
 
 
 
@@ -49,6 +50,10 @@ const moduleRoutes = [
     {
         path: '/meta',
         route: metaRoutes
+    },
+    {
+        path: '/destinations',
+        route: DestinationRoutes
     }
 ];
 

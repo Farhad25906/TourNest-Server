@@ -14,9 +14,9 @@ router.post(
   "/create-tour",
   auth(UserRole.HOST),
   checkTourCreationLimit,
-  fileUploader.upload.single("file"), // Single file upload like user routes
+  fileUploader.upload.array("files", 5), // Support up to 5 images
   (req: Request, res: Response, next: NextFunction) => {
-    // Parse JSON data from req.body.data (EXACTLY like user routes)
+    // Parse JSON data from req.body.data
     try {
       if (req.body.data) {
         console.log(req.body.data);
@@ -55,7 +55,7 @@ router.get(
 router.patch(
   "/:id",
   auth(UserRole.HOST, UserRole.ADMIN),
-  fileUploader.upload.single("file"),
+  fileUploader.upload.array("files", 5), // Support up to 5 images
   (req: Request, res: Response, next: NextFunction) => {
     // Parse JSON data from req.body.data
     try {

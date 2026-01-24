@@ -37,7 +37,7 @@ const createTour = async (req: Request): Promise<Tour> => {
   // Handle image uploads if any
   let images: string[] = [];
 
-  // Check for single file upload (using upload.single())
+  // Check for single file upload
   if (req.file) {
     const uploadResult = await fileUploader.uploadToCloudinary(req.file);
     if (uploadResult?.secure_url) {
@@ -45,15 +45,11 @@ const createTour = async (req: Request): Promise<Tour> => {
     }
   }
 
-  // Also check for multiple files (if using upload.array() in the future)
+  // Check for multiple files
   const files = req.files as Express.Multer.File[];
   if (files && Array.isArray(files) && files.length > 0) {
-    for (const file of files) {
-      const uploadResult = await fileUploader.uploadToCloudinary(file);
-      if (uploadResult?.secure_url) {
-        images.push(uploadResult.secure_url);
-      }
-    }
+    const uploadResults = await fileUploader.uploadMultipleToCloudinary(files);
+    images.push(...uploadResults.map(result => result.secure_url).filter(Boolean));
   }
 
   const tourData = {
