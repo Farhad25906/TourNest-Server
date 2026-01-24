@@ -1,6 +1,7 @@
-# TourNest - A Platform for Travel Organizers & Travelers
+# Tour Nest - Server
 
-TourNest is a modern web platform that connects travelers worldwide, allowing them to discover compatible travel companions, join upcoming trips, and collaborate with travel organizers to create meaningful and unforgettable travel experiences together.
+Robust and scalable backend for the Tour Nest platform, providing RESTful APIs for tour management, bookings, and payments.
+
 
 ## 🌐 Live Links
 
@@ -11,8 +12,6 @@ TourNest is a modern web platform that connects travelers worldwide, allowing th
 
 - **Client Repository:** [https://github.com/Farhad25906/TourNest-Client](https://github.com/Farhad25906/TourNest-Client)
 - **Server Repository:** [https://github.com/Farhad25906/TourNest-Server](https://github.com/Farhad25906/TourNest-Server)
-- Live Client: [https://tour-nest-client.vercel.app/](https://tour-nest-client.vercel.app/)
-- Live Backend: [https://tournest-server.onrender.com/](https://tournest-server.onrender.com/)
 
 
 ## 🔐 Credentials
@@ -23,7 +22,36 @@ Host: [farhadhossen2590@gmail.com](mailto:farhadhossen2590@gmail.com) / 123456
 
 Tourist: [farhadhossen9036@gmail.com](mailto:farhadhossen9036@gmail.com) / 123456
 
-## ✨ Key Features
+
+## 🚀 TeckStack
+
+- **Runtime**: [Node.js](https://nodejs.org/)
+- **Framework**: [Express.js](https://expressjs.com/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **ORM**: [Prisma](https://www.prisma.io/)
+- **Database**: [PostgreSQL](https://www.postgresql.org/)
+- **Validation**: [Zod](https://zod.dev/)
+- **Payments**: [Stripe API](https://stripe.com/)
+- **Cloud Media**: [Cloudinary](https://cloudinary.com/)
+
+### Deployment
+
+- **Frontend:** Vercel
+- **Backend:** Render
+- **Database:** Neon (PostgreSQL)
+
+## ✨ Core Features (Core Functionalities)
+
+- **Tour Management**: Full CRUD operations for global tours and destinations.
+- **Booking Engine**: Sophisticated logic for reservation management and slot tracking.
+- **Secure Payments**: Integrated Stripe hooks for safe transaction processing.
+- **Review System**: Validated feedback loop for tourists and guides.
+- **Subscription Logic**: Role-based access and subscription tier management.
+- **Payout Management**: Automated logic for guide earnings and withdrawals.
+- **Meta Data**: Analytics for admin and host dashboards.
+
+
+## Role Based Features  
 
 ### For Users
 
@@ -56,29 +84,44 @@ Tourist: [farhadhossen9036@gmail.com](mailto:farhadhossen9036@gmail.com) / 12345
 - Role-based access control (RBAC)
 - Secure payment processing
 
-## 🛠️ Technology Stack
+## 📁 File Structure
 
-### Frontend
+```text
+server/
+├── prisma/               # Database schema and migrations
+├── src/
+│   ├── app/
+│   │   ├── modules/      # Feature modules (Tour, Booking, Payment, etc.)
+│   │   ├── routes/       # Centralized API routing
+│   │   └── middlewares/  # Global Express middlewares
+│   ├── config/           # Environment and app configurations
+│   ├── app.ts            # App initialization logic
+│   └── server.ts         # Server entry point
+└── package.json          # Project dependencies and scripts
+```
 
-- **Framework:** Next.js 14
-- **Styling:** Tailwind CSS
-- **UI Components:** Custom components with Tailwind
-- **Image Upload:** Cloudinary
+## 🛠️ Installation Process
 
-### Backend
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd TourNest/server
+   ```
 
-- **Runtime:** Node.js
-- **Framework:** Express.js
-- **ORM:** Prisma
-- **Database:** PostgreSQL (Neon)
-- **Authentication:** JWT (JSON Web Tokens)
-- **Payment:** Stripe
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-### Deployment
+3. **Database Setup**:
+   - Configure your `.env` file with `DATABASE_URL`.
+   - Run migrations and generate client:
+     ```bash
+     npx prisma migrate dev
+     npx prisma generate
+     ```
 
-- **Frontend:** Vercel
-- **Backend:** Render
-- **Database:** Neon (PostgreSQL)
-
-
-
+4. **Run the development server**:
+   ```bash
+   npm run dev
+   ```
