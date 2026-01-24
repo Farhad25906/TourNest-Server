@@ -34,7 +34,7 @@ Tourist: [farhadhossen9036@gmail.com](mailto:farhadhossen9036@gmail.com) / 12345
 - **Payments**: [Stripe API](https://stripe.com/)
 - **Cloud Media**: [Cloudinary](https://cloudinary.com/)
 
-### Deployment
+## 🚀 Deployment
 
 - **Frontend:** Vercel
 - **Backend:** Render
@@ -51,7 +51,7 @@ Tourist: [farhadhossen9036@gmail.com](mailto:farhadhossen9036@gmail.com) / 12345
 - **Meta Data**: Analytics for admin and host dashboards.
 
 
-## Role Based Features  
+## 👥 Role Based Features  
 
 ### For Users
 
