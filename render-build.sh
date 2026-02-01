@@ -2,7 +2,7 @@
 # exit on error
 set -o errexit
 
-pnpm install
-pnpm run build
+npm install
+npm run build
 npx prisma generate
 npx prisma migrate deploy
