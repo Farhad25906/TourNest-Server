@@ -192,7 +192,16 @@ SMTP_PASS=your_app_password
 
 **Farhad Hossen**
 - GitHub: [@Farhad25906](https://github.com/Farhad25906)
+- Portfolio: [portfolio-farhad.vercel.app](https://portfolio-farhad.vercel.app/)
+- LinkedIn: [Farhad Hossen](https://www.linkedin.com/in/farhad-hossen-in/)
 - Email: farhadhossen2590@gmail.com
+
+---
+
+## 📞 Support & Feedback
+
+For support, email farhadhossen2590@gmail.com.
+We value your feedback! Please fill out our [Feedback Form](https://forms.gle/RSLcQxuhhRV4YSiJ9).
 
 ---
 
