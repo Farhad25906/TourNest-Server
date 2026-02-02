@@ -2,13 +2,13 @@
 # exit on error
 set -o errexit
 
-# Remove pnpm lockfile to avoid interference with npm
-rm -f pnpm-lock.yaml
+# Optional: Ensure we are using the latest npm version
+npm install -g npm@latest
 
-# Install dependencies using npm
-npm install --legacy-peer-deps
+# Install dependencies using npm (now uses your new package-lock.json)
+npm install
 
-# Build the project (runs 'tsc' as defined in package.json)
+# Build the project (runs 'tsc')
 npm run build
 
 # Generate Prisma client and deploy migrations
