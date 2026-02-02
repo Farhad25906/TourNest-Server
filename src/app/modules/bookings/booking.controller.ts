@@ -63,7 +63,7 @@ const getHostBookings = catchAsync(async (req: Request, res: Response) => {
 const getSingleBooking = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const user = req.user;
-  const result = await BookingService.getSingleBooking(id, user);
+  const result = await BookingService.getSingleBooking(id as string, user);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -76,7 +76,7 @@ const getSingleBooking = catchAsync(async (req: Request, res: Response) => {
 const updateBooking = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const user = req.user;
-  const result = await BookingService.updateBooking(id, user, req.body);
+  const result = await BookingService.updateBooking(id as string, user, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -89,7 +89,7 @@ const updateBooking = catchAsync(async (req: Request, res: Response) => {
 const updateBookingStatus = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const user = req.user;
-  const result = await BookingService.updateBookingStatus(id, user, req.body);
+  const result = await BookingService.updateBookingStatus(id as string, user, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -102,7 +102,7 @@ const updateBookingStatus = catchAsync(async (req: Request, res: Response) => {
 const cancelBooking = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const user = req.user;
-  const result = await BookingService.cancelBooking(id, user);
+  const result = await BookingService.cancelBooking(id as string, user);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -114,7 +114,7 @@ const cancelBooking = catchAsync(async (req: Request, res: Response) => {
 
 const deleteBooking = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await BookingService.deleteBooking(id);
+  const result = await BookingService.deleteBooking(id as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -150,7 +150,7 @@ const getBookingPaymentInfo = catchAsync(
   async (req: Request, res: Response) => {
     const { id } = req.params;
     const user = req.user;
-    const result = await BookingService.getBookingPaymentInfo(id, user.id);
+    const result = await BookingService.getBookingPaymentInfo(id as string, user.id);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -169,16 +169,16 @@ const initiateBookingPayment = catchAsync(
       throw new ApiError(httpStatus.UNAUTHORIZED, "User email not found");
     }
     console.log("Hello I am Doing Payment");
-    
-    
+
+
     // This returns { paymentUrl, sessionId, paymentId }
-    const result = await BookingService.initiateBookingPayment(id, userEmail);
+    const result = await BookingService.initiateBookingPayment(id as string, userEmail);
 
     // console.log("From Booking Controller:", result);
-    
+
     if (!result) {
       throw new ApiError(
-        httpStatus.INTERNAL_SERVER_ERROR, 
+        httpStatus.INTERNAL_SERVER_ERROR,
         "Failed to initiate payment. No result returned."
       );
     }

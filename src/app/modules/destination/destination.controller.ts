@@ -25,7 +25,7 @@ const getAllDestinations = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getSingleDestination = catchAsync(async (req: Request, res: Response) => {
-    const result = await DestinationService.getSingleDestination(req.params.id);
+    const result = await DestinationService.getSingleDestination(req.params.id as string);
     sendResponse(res, {
         statusCode: httpStatus.OK,
         success: true,
@@ -35,7 +35,7 @@ const getSingleDestination = catchAsync(async (req: Request, res: Response) => {
 });
 
 const updateDestination = catchAsync(async (req: Request, res: Response) => {
-    const result = await DestinationService.updateDestination(req.params.id, req);
+    const result = await DestinationService.updateDestination(req.params.id as string, req);
     sendResponse(res, {
         statusCode: httpStatus.OK,
         success: true,
@@ -45,7 +45,7 @@ const updateDestination = catchAsync(async (req: Request, res: Response) => {
 });
 
 const deleteDestination = catchAsync(async (req: Request, res: Response) => {
-    const result = await DestinationService.deleteDestination(req.params.id);
+    const result = await DestinationService.deleteDestination(req.params.id as string);
     sendResponse(res, {
         statusCode: httpStatus.OK,
         success: true,

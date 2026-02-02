@@ -34,7 +34,7 @@ const getAllTours = catchAsync(async (req: Request, res: Response) => {
 
 const getSingleTour = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await TourService.getSingleTour(id);
+  const result = await TourService.getSingleTour(id as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -46,7 +46,7 @@ const getSingleTour = catchAsync(async (req: Request, res: Response) => {
 
 const updateTour = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await TourService.updateTour(id, req);
+  const result = await TourService.updateTour(id as string, req);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -58,9 +58,9 @@ const updateTour = catchAsync(async (req: Request, res: Response) => {
 
 const deleteTour = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  
+
   // Just pass the tour ID to the service
-  const result = await TourService.deleteTour(id);
+  const result = await TourService.deleteTour(id as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -70,7 +70,7 @@ const deleteTour = catchAsync(async (req: Request, res: Response) => {
   });
 });
 const getHostTours = catchAsync(async (req: Request, res: Response) => {
-  const filters = pick(req.query, hostTourSearchableFields); 
+  const filters = pick(req.query, hostTourSearchableFields);
   const options = pick(req.query, ['page', 'limit', 'sortBy', 'sortOrder']);
   const result = await TourService.getHostTours(req, filters, options);
 
@@ -96,7 +96,7 @@ const getHostTourStats = catchAsync(async (req: Request, res: Response) => {
 
 const getHostSingleTour = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await TourService.getHostSingleTour(id, req);
+  const result = await TourService.getHostSingleTour(id as string, req);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -108,7 +108,7 @@ const getHostSingleTour = catchAsync(async (req: Request, res: Response) => {
 
 const completeTour = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await TourService.completeTour(id, req);
+  const result = await TourService.completeTour(id as string, req);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -126,8 +126,8 @@ export const TourController = {
   getSingleTour,
   updateTour,
   deleteTour,
-  getHostTours,        
-  getHostTourStats,    
-  getHostSingleTour,   
+  getHostTours,
+  getHostTourStats,
+  getHostSingleTour,
   completeTour
 };

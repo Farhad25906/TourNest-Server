@@ -42,8 +42,8 @@ const getAllFromDB = catchAsync(async (req: Request, res: Response) => {
   const filters = pick(req.query, userFilterableFields);
   const options = pick(req.query, ["page", "limit", "sortBy", "sortOrder"]);
   const result = await UserService.getAllFromDB(filters, options);
-  
-  
+
+
 
   sendResponse(res, {
     statusCode: 200,
@@ -70,7 +70,7 @@ const getMyProfile = catchAsync(async (req: Request, res: Response) => {
 
 const changeProfileStatus = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await UserService.changeProfileStatus(id, req.body);
+  const result = await UserService.changeProfileStatus(id as string, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -96,7 +96,7 @@ const updateMyProfile = catchAsync(
 // user.controller.ts - Add this function
 const deleteUser = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await UserService.deleteUser(id);
+  const result = await UserService.deleteUser(id as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

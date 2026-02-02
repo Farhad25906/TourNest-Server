@@ -29,7 +29,7 @@ const getAllReviews = catchAsync(async (req: Request, res: Response) => {
 
 const getTourReviews = catchAsync(async (req: Request, res: Response) => {
   const { tourId } = req.params;
-  const result = await ReviewService.getTourReviews(tourId);
+  const result = await ReviewService.getTourReviews(tourId as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -41,7 +41,7 @@ const getTourReviews = catchAsync(async (req: Request, res: Response) => {
 
 const getHostReviews = catchAsync(async (req: Request, res: Response) => {
   const { hostId } = req.params;
-  const result = await ReviewService.getHostReviews(hostId);
+  const result = await ReviewService.getHostReviews(hostId as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -64,7 +64,7 @@ const getMyReviews = catchAsync(async (req: Request, res: Response) => {
 
 const getSingleReview = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await ReviewService.getSingleReview(id);
+  const result = await ReviewService.getSingleReview(id as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -77,7 +77,7 @@ const getSingleReview = catchAsync(async (req: Request, res: Response) => {
 const updateReview = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const user = req.user;
-  const result = await ReviewService.updateReview(id, user, req.body);
+  const result = await ReviewService.updateReview(id as string, user, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -90,7 +90,7 @@ const updateReview = catchAsync(async (req: Request, res: Response) => {
 const deleteReview = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const user = req.user;
-  const result = await ReviewService.deleteReview(id, user);
+  const result = await ReviewService.deleteReview(id as string, user);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

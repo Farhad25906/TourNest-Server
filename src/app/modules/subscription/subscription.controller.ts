@@ -19,7 +19,7 @@ const createSubscription = catchAsync(async (req: Request, res: Response) => {
 
   const result = await SubscriptionService.createSubscription(user, planId);
   console.log(result);
-  
+
 
   // If subscription requires payment, automatically initiate payment
   if (result.requiresPayment && result.subscriptionId) {
@@ -61,7 +61,7 @@ const initiateSubscriptionPayment = catchAsync(
     }
 
     const result = await SubscriptionService.initiateSubscriptionPayment(
-      subscriptionId,
+      subscriptionId as string,
       userEmail,
     );
 
@@ -89,7 +89,7 @@ const getSubscriptionPaymentInfo = catchAsync(
     }
 
     const result = await SubscriptionService.getSubscriptionPaymentInfo(
-      subscriptionId,
+      subscriptionId as string,
       userEmail,
     );
 
@@ -193,7 +193,7 @@ const getAllPlans = catchAsync(async (req: Request, res: Response) => {
 const getSingleSubscriptionPlan = catchAsync(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const result = await SubscriptionService.getSingleSubscriptionPlan(id);
+    const result = await SubscriptionService.getSingleSubscriptionPlan(id as string);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -209,7 +209,7 @@ const updateSubscriptionPlan = catchAsync(
   async (req: Request, res: Response) => {
     const { id } = req.params;
     const result = await SubscriptionService.updateSubscriptionPlan(
-      id,
+      id as string,
       req.body,
     );
 
@@ -226,7 +226,7 @@ const updateSubscriptionPlan = catchAsync(
 const deleteSubscriptionPlan = catchAsync(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const result = await SubscriptionService.deleteSubscriptionPlan(id);
+    const result = await SubscriptionService.deleteSubscriptionPlan(id as string);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -259,7 +259,7 @@ const getAllSubscriptions = catchAsync(async (req: Request, res: Response) => {
 const getSubscriptionDetails = catchAsync(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const result = await SubscriptionService.getSubscriptionDetails(id);
+    const result = await SubscriptionService.getSubscriptionDetails(id as string);
 
     sendResponse(res, {
       statusCode: httpStatus.OK,
@@ -273,7 +273,7 @@ const getSubscriptionDetails = catchAsync(
 // Admin: Update subscription
 const updateSubscription = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await SubscriptionService.updateSubscription(id, req.body);
+  const result = await SubscriptionService.updateSubscription(id as string, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -286,7 +286,7 @@ const updateSubscription = catchAsync(async (req: Request, res: Response) => {
 // Admin: Delete subscription
 const deleteSubscription = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await SubscriptionService.deleteSubscription(id);
+  const result = await SubscriptionService.deleteSubscription(id as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

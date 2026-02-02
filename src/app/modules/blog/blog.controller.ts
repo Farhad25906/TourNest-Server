@@ -43,7 +43,7 @@ const getAllBlogs = catchAsync(async (req: Request, res: Response) => {
 
 const getBlogById = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await BlogService.getBlogById(id);
+  const result = await BlogService.getBlogById(id as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -56,7 +56,7 @@ const getBlogById = catchAsync(async (req: Request, res: Response) => {
 const updateBlog = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IJWTPayload;
   const { id } = req.params;
-  const result = await BlogService.updateBlog(user, id, req);
+  const result = await BlogService.updateBlog(user, id as string, req);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -69,7 +69,7 @@ const updateBlog = catchAsync(async (req: Request, res: Response) => {
 const deleteBlog = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IJWTPayload;
   const { id } = req.params;
-  const result = await BlogService.deleteBlog(user, id);
+  const result = await BlogService.deleteBlog(user, id as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -82,7 +82,7 @@ const deleteBlog = catchAsync(async (req: Request, res: Response) => {
 const createComment = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IJWTPayload;
   const { blogId } = req.params;
-  const result = await BlogService.createComment(user, blogId, req.body);
+  const result = await BlogService.createComment(user, blogId as string, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
@@ -95,7 +95,7 @@ const createComment = catchAsync(async (req: Request, res: Response) => {
 const updateComment = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IJWTPayload;
   const { commentId } = req.params;
-  const result = await BlogService.updateComment(user, commentId, req.body);
+  const result = await BlogService.updateComment(user, commentId as string, req.body);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -108,7 +108,7 @@ const updateComment = catchAsync(async (req: Request, res: Response) => {
 const deleteComment = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IJWTPayload;
   const { commentId } = req.params;
-  const result = await BlogService.deleteComment(user, commentId);
+  const result = await BlogService.deleteComment(user, commentId as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -123,7 +123,7 @@ const toggleLike = catchAsync(async (req: Request, res: Response) => {
   // console.log(req.user);
 
   const { blogId } = req.params;
-  const result = await BlogService.toggleLike(user, blogId);
+  const result = await BlogService.toggleLike(user, blogId as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -136,7 +136,7 @@ const toggleLike = catchAsync(async (req: Request, res: Response) => {
 const toggleCommentLike = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as IJWTPayload;
   const { commentId } = req.params;
-  const result = await BlogService.toggleCommentLike(user, commentId);
+  const result = await BlogService.toggleCommentLike(user, commentId as string);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -161,7 +161,7 @@ const getMyBlogs = catchAsync(async (req: Request, res: Response) => {
 const updateBlogStatus = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const { isApproved } = req.body;
-  const result = await BlogService.updateBlogStatus(id, isApproved);
+  const result = await BlogService.updateBlogStatus(id as string, isApproved);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
