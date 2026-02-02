@@ -1,9 +1,30 @@
-import multer, { FileFilterCallback } from "multer";
+import multer from "multer";
 import { Request } from "express";
 import path from "path";
 import { v2 as cloudinary } from "cloudinary";
 import sharp from "sharp";
 import fs from "fs/promises";
+
+// Define Multer File interface
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  destination: string;
+  filename: string;
+  path: string;
+  buffer: Buffer;
+}
+
+// Cloudinary result interface
+interface CloudinaryResult {
+  public_id: string;
+  url: string;
+  secure_url: string;
+  [key: string]: any;
+}
 
 /* ----------------------------------
    Multer Storage Configuration
@@ -11,18 +32,18 @@ import fs from "fs/promises";
 const storage = multer.diskStorage({
   destination: function (
     req: Request,
-    file: Express.Multer.File,
+    file: MulterFile,
     cb: (error: Error | null, destination: string) => void
   ) {
     cb(null, path.join(process.cwd(), "uploads"));
   },
   filename: function (
     req: Request,
-    file: Express.Multer.File,
+    file: MulterFile,
     cb: (error: Error | null, filename: string) => void
   ) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname); // ✅ KEEP EXTENSION
+    const ext = path.extname(file.originalname);
     cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
   },
 });
@@ -39,7 +60,7 @@ const convertToWebP = async (filePath: string): Promise<string> => {
 
   await sharp(filePath)
     .webp({ quality: 85 })
-    .toFile(webpPath); // ✅ DIFFERENT OUTPUT FILE
+    .toFile(webpPath);
 
   // Remove original file
   await fs.unlink(filePath);
@@ -50,7 +71,7 @@ const convertToWebP = async (filePath: string): Promise<string> => {
 /* ----------------------------------
    Upload Single File to Cloudinary
 ----------------------------------- */
-const uploadToCloudinary = async (file: Express.Multer.File) => {
+const uploadToCloudinary = async (file: MulterFile): Promise<CloudinaryResult> => {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
     api_key: process.env.CLOUDINARY_API_KEY!,
@@ -89,8 +110,8 @@ const uploadToCloudinary = async (file: Express.Multer.File) => {
    Upload Multiple Files to Cloudinary
 ----------------------------------- */
 const uploadMultipleToCloudinary = async (
-  files: Express.Multer.File[]
-) => {
+  files: MulterFile[]
+): Promise<CloudinaryResult[]> => {
   return Promise.all(files.map((file) => uploadToCloudinary(file)));
 };
 

@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
-# exit on error
 set -o errexit
 
-# Optional: Ensure we are using the latest npm version
-npm install -g npm@latest
+# Install ALL dependencies including dev dependencies
+npm ci --include=dev
 
-# Install dependencies using npm (now uses your new package-lock.json)
-npm install
-
-# Build the project (runs 'tsc')
+# Build TypeScript (this will also install types)
 npm run build
 
-# Generate Prisma client and deploy migrations
+# Setup Prisma
 npx prisma generate
 npx prisma migrate deploy
