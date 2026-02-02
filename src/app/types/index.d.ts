@@ -1,5 +1,6 @@
 import { Host, Subscription } from '@prisma/client';
 import { IJWTPayload } from '../common';
+import "multer";
 
 declare global {
   namespace Express {

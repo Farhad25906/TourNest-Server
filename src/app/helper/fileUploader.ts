@@ -6,7 +6,7 @@ import sharp from "sharp";
 import fs from "fs/promises";
 
 // Define Multer File interface
-interface MulterFile {
+export interface MulterFile {
   fieldname: string;
   originalname: string;
   encoding: string;

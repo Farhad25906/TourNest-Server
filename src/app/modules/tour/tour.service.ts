@@ -4,7 +4,7 @@ import { Tour, TourCategory, DifficultyLevel, Prisma } from "@prisma/client";
 import { prisma } from "../../shared/prisma";
 import { IOptions, paginationHelper } from "../../helper/paginationHelper";
 
-import { fileUploader } from "../../helper/fileUploader";
+import { fileUploader, MulterFile } from "../../helper/fileUploader";
 import { hostTourSearchableFields } from "./tour.constant";
 
 const createTour = async (req: Request): Promise<Tour> => {
@@ -46,7 +46,7 @@ const createTour = async (req: Request): Promise<Tour> => {
   }
 
   // Check for multiple files
-  const files = req.files as Express.Multer.File[];
+  const files = req.files as MulterFile[];
   if (files && Array.isArray(files) && files.length > 0) {
     const uploadResults = await fileUploader.uploadMultipleToCloudinary(files);
     images.push(...uploadResults.map(result => result.secure_url).filter(Boolean));
@@ -333,7 +333,7 @@ const updateTour = async (id: string, req: Request): Promise<Tour> => {
   }
 
   // Check for multiple files
-  const files = req.files as Express.Multer.File[];
+  const files = req.files as MulterFile[];
   if (files && Array.isArray(files) && files.length > 0) {
     for (const file of files) {
       const uploadResult = await fileUploader.uploadToCloudinary(file);
