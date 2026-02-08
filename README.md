@@ -1,4 +1,4 @@
-# 💰 EdenSuite Server - Property Rental & Tour Management System Backend
+# 💰 TourNest Server - Tour Management System Backend
 
 A robust, scalable, and secure backend API for EdenSuite, powering a comprehensive ecosystem for property rentals and tour management. Built with Node.js, Express, TypeScript, and PostgreSQL (via Prisma).
 
