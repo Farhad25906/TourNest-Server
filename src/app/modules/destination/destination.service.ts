@@ -69,15 +69,30 @@ const updateDestination = async (
     id: string,
     req: Request
 ): Promise<IDestination | null> => {
-    const updateData: any = { ...req.body };
+    let imageUrl = req.body.image;
 
     // Handle image upload if file is present
     if (req.file) {
         const uploadResult = await fileUploader.uploadToCloudinary(req.file);
         if (uploadResult?.secure_url) {
-            updateData.image = uploadResult.secure_url;
+            imageUrl = uploadResult.secure_url;
         }
     }
+
+    // Parse data if it exists (common for multipart/form-data with file uploads)
+    const requestData = req.body.data ? JSON.parse(req.body.data) : req.body;
+
+    const updateData = {
+        ...requestData,
+    };
+
+    if (imageUrl) {
+        updateData.image = imageUrl;
+    }
+
+    // Remove fields that shouldn't be updated or might cause issues
+    delete updateData.id;
+    delete updateData.data;
 
     const result = await prisma.destination.update({
         where: { id },

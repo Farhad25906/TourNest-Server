@@ -9,7 +9,7 @@ const createTourValidationSchema = z.object({
   country: z.string().min(1, "Country is required"),
   startDate: z.string().transform((str) => new Date(str)),
   endDate: z.string().transform((str) => new Date(str)),
-  duration: z.number().int().positive("Duration must be positive"),
+  duration: z.number().int().positive("Duration must be positive").optional(), // Made optional as we calculate it
   price: z.number().positive("Price must be positive"),
   maxGroupSize: z.number().int().min(1, "Max group size must be at least 1"),
   category: z.enum([
@@ -30,6 +30,11 @@ const createTourValidationSchema = z.object({
   images: z.array(z.string()).optional().default([]),
   isActive: z.boolean().optional().default(true),
   isFeatured: z.boolean().optional().default(false),
+}).refine(data => {
+  return data.endDate > data.startDate;
+}, {
+  message: "End date must be after start date",
+  path: ["endDate"]
 });
 
 const updateTourValidationSchema = z.object({
@@ -75,6 +80,14 @@ const updateTourValidationSchema = z.object({
   images: z.array(z.string()).optional(),
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
+}).refine(data => {
+  if (data.startDate && data.endDate) {
+    return data.endDate > data.startDate;
+  }
+  return true;
+}, {
+  message: "End date must be after start date",
+  path: ["endDate"]
 });
 
 export const TourValidation = {

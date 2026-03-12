@@ -9,6 +9,7 @@ import { reviewRoutes } from '../modules/review/review.route';
 import { paymentRoutes } from '../modules/payment/payment.route';
 import { metaRoutes } from '../modules/meta/meta.route';
 import { DestinationRoutes } from '../modules/destination/destination.route';
+import { payoutRoutes } from '../modules/payout/payout.route';
 
 
 
@@ -54,6 +55,10 @@ const moduleRoutes = [
     {
         path: '/destinations',
         route: DestinationRoutes
+    },
+    {
+        path: '/payouts',
+        route: payoutRoutes
     }
 ];
 

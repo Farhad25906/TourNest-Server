@@ -45,17 +45,31 @@ const createTour = async (req: Request): Promise<Tour> => {
     }
   }
 
-  // Check for multiple files
-  const files = req.files as MulterFile[];
+  // Handle multiple files
+  const files = (req.files as MulterFile[]) || [];
+  console.log("Files received in createTour service:", files.length);
+
   if (files && Array.isArray(files) && files.length > 0) {
-    const uploadResults = await fileUploader.uploadMultipleToCloudinary(files);
-    images.push(...uploadResults.map(result => result.secure_url).filter(Boolean));
+    try {
+      const uploadResults = await fileUploader.uploadMultipleToCloudinary(files);
+      console.log("Upload results:", uploadResults.map(r => r.secure_url));
+      images.push(...uploadResults.map(result => result.secure_url).filter(Boolean));
+    } catch (error) {
+      console.error("Error uploading images to Cloudinary:", error);
+    }
   }
+
+  // Calculate duration if not provided or to ensure accuracy
+  const startDate = new Date(req.body.startDate);
+  const endDate = new Date(req.body.endDate);
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+  const calculatedDuration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
 
   const tourData = {
     ...req.body,
     hostId: host.id, // Use the host's ID from database
     images: images.length > 0 ? images : req.body.images || [],
+    duration: req.body.duration || calculatedDuration,
     currentGroupSize: 0,
     views: 0,
   };
@@ -333,17 +347,29 @@ const updateTour = async (id: string, req: Request): Promise<Tour> => {
   }
 
   // Check for multiple files
-  const files = req.files as MulterFile[];
+  const files = (req.files as MulterFile[]) || [];
+  console.log("Files received in updateTour service:", files.length);
+
   if (files && Array.isArray(files) && files.length > 0) {
-    for (const file of files) {
-      const uploadResult = await fileUploader.uploadToCloudinary(file);
-      if (uploadResult?.secure_url) {
-        images.push(uploadResult.secure_url);
-      }
+    try {
+      const uploadResults = await fileUploader.uploadMultipleToCloudinary(files);
+      console.log("Upload results:", uploadResults.map(r => r.secure_url));
+      images.push(...uploadResults.map(result => result.secure_url).filter(Boolean));
+    } catch (error) {
+      console.error("Error uploading images to Cloudinary:", error);
     }
   }
 
   const updateData = { ...req.body };
+
+  // Calculate duration if dates are being updated
+  if (req.body.startDate || req.body.endDate) {
+    const startDate = new Date(req.body.startDate || tour.startDate);
+    const endDate = new Date(req.body.endDate || tour.endDate);
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    const calculatedDuration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+    updateData.duration = calculatedDuration;
+  }
 
   // Update images if new ones were uploaded
   if ((req.file || (files && files.length > 0)) && images.length > 0) {

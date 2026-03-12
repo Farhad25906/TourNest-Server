@@ -54,8 +54,15 @@ const upload = multer({ storage });
    Convert Image to WebP Safely
 ----------------------------------- */
 const convertToWebP = async (filePath: string): Promise<string> => {
+  const fileExt = path.extname(filePath).toLowerCase();
+
+  // If already webp, return original path
+  if (fileExt === ".webp") {
+    return filePath;
+  }
+
   const dir = path.dirname(filePath);
-  const baseName = path.basename(filePath, path.extname(filePath));
+  const baseName = path.basename(filePath, fileExt);
   const webpPath = path.join(dir, `${baseName}.webp`);
 
   await sharp(filePath)
@@ -78,20 +85,23 @@ const uploadToCloudinary = async (file: MulterFile): Promise<CloudinaryResult> =
     api_secret: process.env.CLOUDINARY_API_SECRET!,
   });
 
-  try {
-    // Convert image to WebP
-    const webpPath = await convertToWebP(file.path);
-    const publicId = path.basename(webpPath, ".webp");
+  let uploadPath = file.path;
 
-    // Upload WebP to Cloudinary
-    const result = await cloudinary.uploader.upload(webpPath, {
+  try {
+    // Process image: convert to WebP if not already WebP
+    uploadPath = await convertToWebP(file.path);
+
+    const publicId = path.basename(uploadPath, path.extname(uploadPath));
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(uploadPath, {
       public_id: publicId,
       format: "webp",
       resource_type: "image",
     });
 
-    // Clean up WebP after upload
-    await fs.unlink(webpPath);
+    // Clean up the temp file after upload
+    await fs.unlink(uploadPath);
 
     return result;
   } catch (error) {
@@ -99,7 +109,11 @@ const uploadToCloudinary = async (file: MulterFile): Promise<CloudinaryResult> =
 
     // Cleanup in case of failure
     try {
-      await fs.unlink(file.path);
+      await fs.unlink(uploadPath);
+      // If conversion failed, original file might still exist
+      if (uploadPath !== file.path) {
+        await fs.unlink(file.path).catch(() => { });
+      }
     } catch (_) { }
 
     throw error;
