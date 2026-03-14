@@ -154,8 +154,8 @@ const getAllFromDB = async (params: any, options: IOptions) => {
   const whereConditions: Prisma.UserWhereInput =
     andConditions.length > 0
       ? {
-          AND: andConditions,
-        }
+        AND: andConditions,
+      }
       : {};
 
   // Determine which relations to include based on role if specified
@@ -163,17 +163,17 @@ const getAllFromDB = async (params: any, options: IOptions) => {
     // Always include basic user data
     ...(filterData.role
       ? {
-          // Conditionally include role-specific data based on the role filter
-          admin: filterData.role === UserRole.ADMIN,
-          host: filterData.role === UserRole.HOST,
-          tourist: filterData.role === UserRole.TOURIST,
-        }
+        // Conditionally include role-specific data based on the role filter
+        admin: filterData.role === UserRole.ADMIN,
+        host: filterData.role === UserRole.HOST,
+        tourist: filterData.role === UserRole.TOURIST,
+      }
       : {
-          // If no role filter, include all related data
-          admin: true,
-          host: true,
-          tourist: true,
-        }),
+        // If no role filter, include all related data
+        admin: true,
+        host: true,
+        tourist: true,
+      }),
   };
 
   const result = await prisma.user.findMany({
@@ -254,7 +254,7 @@ const getMyProfile = async (user: IJWTPayload) => {
     },
   });
   // console.log(userWithProfile);
-  
+
 
   const { admin, host, tourist, ...userInfo } = userWithProfile;
 
@@ -272,7 +272,7 @@ const getMyProfile = async (user: IJWTPayload) => {
       break;
   }
   // console.log(profileData,userInfo, "From Controller");
-  
+
 
   return {
     ...userInfo,
@@ -316,7 +316,7 @@ const updateMyProfile = async (user: IJWTPayload, req: Request) => {
   const file = req.file;
   const updateData = { ...req.body };
   // console.log(updateData);
-  
+
 
   // Handle file upload
   if (file) {
@@ -335,6 +335,31 @@ const updateMyProfile = async (user: IJWTPayload, req: Request) => {
       updateData.visitedLocations = [];
     }
   }
+
+  // Handle new complex fields for all roles
+  const complexFields = [
+    "socialLinks",
+    "achievements",
+    "languages",
+    "emergencyContact",
+    "favorites",
+    "preferenceSettings",
+  ];
+
+  complexFields.forEach((field) => {
+    if (typeof updateData[field] === "string") {
+      try {
+        updateData[field] = JSON.parse(updateData[field]);
+      } catch (error) {
+        // Fallback for arrays or objects
+        if (["achievements", "languages", "favorites"].includes(field)) {
+          updateData[field] = [];
+        } else {
+          updateData[field] = undefined;
+        }
+      }
+    }
+  });
 
   // Update profile based on role
   let profileInfo;
@@ -365,7 +390,7 @@ const updateMyProfile = async (user: IJWTPayload, req: Request) => {
       break;
   }
   // console.log(userInfo,profileInfo);
-  
+
 
   // Return the updated profile with user info
   return {

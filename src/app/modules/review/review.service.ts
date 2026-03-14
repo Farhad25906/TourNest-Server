@@ -88,28 +88,7 @@ const createReview = async (req: Request): Promise<any> => {
     },
   });
 
-  // Update tour rating
-  const tourReviews = await prisma.review.findMany({
-    where: {
-      tourId: booking.tourId,
-      isApproved: true,
-      isDeleted: false,
-    },
-  });
-
-  const tourAvgRating = tourReviews.length > 0
-    ? tourReviews.reduce((sum, r) => sum + r.rating, 0) / tourReviews.length
-    : 0;
-
-  await prisma.tour.update({
-    where: { id: booking.tourId },
-    data: {
-      averageRating: tourAvgRating,
-      totalReviews: tourReviews.length,
-    },
-  });
-
-  // Update host rating
+  // Update host rating (Primary Metric)
   const hostReviews = await prisma.review.findMany({
     where: {
       hostId: booking.tour.hostId,

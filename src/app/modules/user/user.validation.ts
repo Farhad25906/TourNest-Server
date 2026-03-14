@@ -9,7 +9,7 @@ const createTouristValidationSchema = z.object({
         profilePhoto: z.string().optional(),
         bio: z.string().optional(),
         interests: z.string().optional(),
-        location: z.string().optional(), 
+        location: z.string().optional(),
         // contactNumber removed - doesn't exist in Tourist model
         visitedCountries: z.string().optional(),
     })
@@ -19,15 +19,19 @@ const createTouristValidationSchema = z.object({
 const updateTouristValidationSchema = z.object({
     name: z.string().min(1, "Name is required").optional(),
     profilePhoto: z.string().optional(),
-    phone: z.string().optional().nullable(), // Allow null and empty string
-    bio: z.string().optional().nullable(), // Allow null and empty string
-    hometown: z.string().optional().nullable(), // Allow null and empty string
-    visitedLocations: z.array(z.string()).optional(),
-    isVerified: z.boolean().optional(),
-    tourLimit: z.number().int().min(0).optional(),
-    currentTourCount: z.number().int().min(0).optional(),
-    subscriptionId: z.string().optional().nullable(),
-}).partial(); // Make all fields optional for updates
+    bio: z.string().optional().nullable(),
+    contactNumber: z.string().optional().nullable(),
+    interests: z.string().optional().nullable(),
+    location: z.string().optional().nullable(),
+    visitedCountries: z.string().optional().nullable(),
+    // Complex fields
+    socialLinks: z.any().optional(),
+    achievements: z.array(z.string()).optional(),
+    languages: z.array(z.string()).optional(),
+    emergencyContact: z.any().optional(),
+    favorites: z.array(z.string()).optional(),
+    preferenceSettings: z.any().optional(),
+}).partial();
 
 // For creating admin
 const createAdminValidationSchema = z.object({
@@ -45,6 +49,8 @@ const updateAdminValidationSchema = z.object({
     name: z.string().min(1, "Name is required").optional(),
     profilePhoto: z.string().optional(),
     contactNumber: z.string().optional(),
+    socialLinks: z.any().optional(),
+    preferenceSettings: z.any().optional(),
 }).partial();
 
 // For creating host - fixed to include all fields from model
@@ -78,6 +84,14 @@ const updateHostValidationSchema = z.object({
     tourLimit: z.number().int().min(0).optional(),
     currentTourCount: z.number().int().min(0).optional(),
     subscriptionId: z.string().optional(),
+    // New fields
+    socialLinks: z.any().optional(),
+    achievements: z.array(z.string()).optional(),
+    languages: z.array(z.string()).optional(),
+    emergencyContact: z.any().optional(),
+    favorites: z.array(z.string()).optional(),
+    preferenceSettings: z.any().optional(),
+    followerCount: z.number().int().min(0).optional(),
 }).partial();
 
 // Status update validation
