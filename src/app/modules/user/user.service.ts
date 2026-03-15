@@ -315,7 +315,7 @@ const updateMyProfile = async (user: IJWTPayload, req: Request) => {
 
   const file = req.file;
   const updateData = { ...req.body };
-  // console.log(updateData);
+  console.log("Updating profile with data:", JSON.stringify(updateData, null, 2));
 
 
   // Handle file upload
